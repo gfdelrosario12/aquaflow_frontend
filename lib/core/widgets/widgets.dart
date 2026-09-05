@@ -6,6 +6,7 @@ export 'aqua_dialog.dart';
 export 'empty_state_widget.dart';
 export 'error_state_widget.dart';
 export 'loading_state_widget.dart';
+export 'offline_banner.dart';
 export 'responsive_container.dart';
 export 'sensor_metric_tile.dart';
 export 'simulated_telemetry_chart.dart';

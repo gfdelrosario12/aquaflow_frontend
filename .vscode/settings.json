@@ -311,6 +311,26 @@
         "/^openspec status --change \"add-offline-support\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^openspec instructions apply --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/offline$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter test test/offline_support_test\\.dart --reporter expanded$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/offline lib/core/widgets/offline_banner\\.dart lib/features/control/data/repositories/api_control_repository\\.dart$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter test test/offline_support_test\\.dart --reporter compact$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
