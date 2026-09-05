@@ -1,30 +1,55 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:aquaflow_frontend/features/auth/domain/models/auth_token.dart';
+import 'package:aquaflow_frontend/features/auth/domain/models/user_session.dart';
+import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:aquaflow_frontend/features/irrigation/data/repositories/irrigation_repository.dart';
+import 'package:aquaflow_frontend/features/irrigation/domain/models/centralized_irrigation.dart';
+import 'package:aquaflow_frontend/features/zones/data/repositories/zone_repository.dart';
+import 'package:aquaflow_frontend/main.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:aquaflow_frontend/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Aqua Flow app shell smoke test when authenticated',
+      (WidgetTester tester) async {
+    final mockSession = UserSession(
+      userId: 'usr_test',
+      username: 'testop',
+      email: 'test@aquaflow.io',
+      role: 'Operator',
+      token: AuthToken(
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      ),
+    );
+    final authNotifier = AuthNotifier();
+    authNotifier.state = AuthState.authenticated(mockSession);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.pumpWidget(AquaFlowApp(authNotifier: authNotifier));
+    await tester.pump(const Duration(seconds: 1));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('AquaSense Dashboard'), findsOneWidget);
+    expect(find.text('Centralized Irrigation System'), findsOneWidget);
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Field'), findsWidgets);
+    expect(find.text('Control'), findsWidgets);
+  });
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('MonitoringZone repository retrieves Q1–Q4 zones', () async {
+    final repository = ZoneRepositoryImpl();
+    final zones = await repository.fetchMonitoringZones();
+
+    expect(zones.length, equals(4));
+    expect(zones.map((z) => z.code), containsAll(['Q1', 'Q2', 'Q3', 'Q4']));
+  });
+
+  test('Irrigation repository manages centralized field system', () async {
+    final repository = IrrigationRepositoryImpl();
+    final initial = await repository.fetchSystemStatus();
+
+    expect(initial.mainPumpState, equals(PumpState.idle));
+
+    final updated = await repository.toggleMainPump(true);
+    expect(updated.mainPumpState, equals(PumpState.active));
+    expect(updated.flowRateLitersPerMin, greaterThan(0.0));
   });
 }
