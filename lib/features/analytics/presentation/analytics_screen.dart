@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../awd/presentation/awd_analytics_screen.dart';
 
 class AnalyticsScreen extends StatelessWidget {
   const AnalyticsScreen({super.key});
@@ -19,22 +20,37 @@ class AnalyticsScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Field Analytics',
-                      style: theme.textTheme.headlineMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Historical telemetry & AWD moisture trends',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Field Analytics',
+                        style: theme.textTheme.headlineMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Historical telemetry & AWD moisture trends',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
                 ),
                 StatusBadge.awdStatus('Safe Level'),
               ],
+            ),
+            const SizedBox(height: AppDimensions.spaceMd),
+            AquaButton(
+              label: 'View AWD Rules Engine & Field Analytics',
+              icon: Icons.analytics,
+              isFullWidth: true,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const AwdAnalyticsScreen(),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: AppDimensions.spaceMd),
             _buildStatCardsRow(context),

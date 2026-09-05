@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
+import '../../alerts/presentation/alerts_screen.dart';
 import '../../analytics/presentation/analytics_screen.dart';
 import '../../control/presentation/control_screen.dart';
 import '../../field/presentation/field_screen.dart';
@@ -36,6 +37,30 @@ class _AppShellState extends State<AppShell> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text(
+          _currentIndex == 0
+              ? AppStrings.appTitle
+              : (_currentIndex == 1
+                  ? AppStrings.navField
+                  : (_currentIndex == 2
+                      ? AppStrings.navAnalytics
+                      : (_currentIndex == 3 ? AppStrings.navControl : AppStrings.navSettings))),
+        ),
+        actions: [
+          IconButton(
+            icon: const Badge(
+              label: Text('2'),
+              child: Icon(Icons.notifications_outlined),
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const AlertsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
       body: SafeArea(
         child: IndexedStack(
           index: _currentIndex,

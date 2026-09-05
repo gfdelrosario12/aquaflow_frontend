@@ -1,24 +1,4 @@
-# centralized-irrigation Specification
-
-## Purpose
-
-Provides centralized irrigation system models, field-wide operational status abstractions, real-time telemetry dashboards, interactive control command pipelines, safety confirmation flows, authorization checks, and fault resilience for AquaSense.
-
-## Requirements
-
-### Requirement: Centralized field irrigation model
-The application MUST model physical field irrigation as a single centralized system serving the entire field, distinct from individual telemetry monitoring zones.
-
-#### Scenario: Displaying irrigation status
-- **WHEN** the user views irrigation information in the Control or Home screen
-- **THEN** system operational status (such as Main Pump state, System Mode, and Flow Rate) is presented as a unified field-wide entity.
-
-### Requirement: Foundation-level control abstraction
-The application MUST represent centralized control state models while isolating UI actions from production pump/valve hardware execution during the foundation phase.
-
-#### Scenario: Interacting with centralized control screen
-- **WHEN** the user navigates to the Control screen
-- **THEN** centralized field-level system status and simulated override abstractions are presented without invoking actual pump/valve hardware drivers.
+## ADDED Requirements
 
 ### Requirement: Real-time centralized irrigation status display
 The system SHALL present a comprehensive operational status dashboard for the single centralized irrigation system on the Control screen, including main pump status (Off, Pumping, Fault), main valve status (Closed, Open, Transitioning), controller state (Online, Offline, Local Override), current irrigation state (Idle, Irrigating, Command Pending, Error), start timestamp, elapsed/remaining duration, last command result, and fixed target indicator (`ENTIRE FIELD`).
@@ -62,3 +42,4 @@ The system SHALL clearly distinguish automated field-level AWD analytics recomme
 #### Scenario: Presenting recommendation distinct from active hardware control
 - **WHEN** an AWD analytics recommendation suggests field irrigation
 - **THEN** the system displays the recommendation as an advisory insight, requiring explicit manual user action on the Central Control screen to initiate actual field-wide irrigation.
+

@@ -3,6 +3,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/aqua_button.dart';
 import '../../../../core/widgets/aqua_card.dart';
+import '../../../awd/presentation/awd_analytics_screen.dart';
 import '../../domain/models/field_dashboard_summary.dart';
 import '../../domain/models/field_recommendation.dart';
 
@@ -98,6 +99,20 @@ class FieldRecommendationsCard extends StatelessWidget {
             const SizedBox(height: AppDimensions.spaceMd),
             ...recommendations.map((rec) => _buildRecommendationItem(context, rec)),
           ],
+          const SizedBox(height: AppDimensions.spaceSm),
+          AquaButton(
+            label: 'View Detailed AWD Analytics',
+            icon: Icons.analytics_outlined,
+            variant: AquaButtonVariant.outline,
+            isFullWidth: true,
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const AwdAnalyticsScreen(),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
