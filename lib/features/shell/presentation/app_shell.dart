@@ -4,6 +4,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../alerts/presentation/alerts_screen.dart';
 import '../../analytics/presentation/analytics_screen.dart';
 import '../../control/presentation/control_screen.dart';
+import '../../diagnostics/presentation/device_diagnostics_screen.dart';
 import '../../field/presentation/field_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
@@ -48,6 +49,15 @@ class _AppShellState extends State<AppShell> {
                       : (_currentIndex == 3 ? AppStrings.navControl : AppStrings.navSettings))),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.health_and_safety_outlined),
+            tooltip: 'Device Diagnostics',
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DeviceDiagnosticsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Badge(
               label: Text('2'),

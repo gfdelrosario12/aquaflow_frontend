@@ -5,6 +5,7 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../main.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
+import '../../diagnostics/presentation/device_diagnostics_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -47,6 +48,17 @@ class SettingsScreen extends StatelessWidget {
             _buildUserSessionCard(context),
             const SizedBox(height: AppDimensions.spaceMd),
             _buildThemeToggleSection(context),
+            const SizedBox(height: AppDimensions.spaceMd),
+            AquaButton(
+              label: 'Open Device Diagnostics',
+              icon: Icons.health_and_safety_outlined,
+              variant: AquaButtonVariant.outline,
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DeviceDiagnosticsScreen()),
+                );
+              },
+            ),
             const SizedBox(height: AppDimensions.spaceMd),
             _buildSettingsSection(
               context,
