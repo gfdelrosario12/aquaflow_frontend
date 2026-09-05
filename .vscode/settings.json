@@ -279,6 +279,38 @@
         "/^mkdir -p \"openspec/changes/archive\" && mv \"openspec/changes/add-realtime-updates\" \"openspec/changes/archive/2026-09-05-add-realtime-updates\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^openspec new change \"add-offline-support\" && openspec status --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions proposal --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions design --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions specs --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions tasks --change \"add-offline-support\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec validate add-offline-support --type change --strict$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"add-offline-support\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
