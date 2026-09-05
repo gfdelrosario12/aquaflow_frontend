@@ -1,305 +1,398 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
-import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../main.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../diagnostics/presentation/device_diagnostics_screen.dart';
+import '../domain/models/settings_models.dart';
+import 'providers/settings_provider.dart';
 
-class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key});
+class SettingsScreen extends StatefulWidget {
+  final SettingsNotifier? notifier;
 
-  Future<void> _handleLogout(BuildContext context) async {
-    final confirmed = await AquaDialog.show(
-      context: context,
-      title: 'Sign Out of AquaFlow?',
-      message: 'Are you sure you want to end your operator session?',
-      confirmText: 'Sign Out',
-      icon: Icons.logout,
-      iconColor: AppColors.alertError,
-    );
+  const SettingsScreen({super.key, this.notifier});
 
-    if (confirmed == true) {
-      await globalAuthNotifier.logout();
-    }
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  late final SettingsNotifier _notifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifier = widget.notifier ??
+        SettingsNotifier(themeModeNotifier: themeModeNotifier);
+    _notifier.addListener(_onSettingsChanged);
+  }
+
+  void _onSettingsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _notifier.removeListener(_onSettingsChanged);
+    if (widget.notifier == null) _notifier.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final state = _notifier.state;
 
     return ResponsiveContainer(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppDimensions.spaceMd),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'App Settings',
-              style: theme.textTheme.headlineMedium,
+      child: state.status == SettingsLoadStatus.loading
+          ? const LoadingStateWidget(message: 'Loading AquaSense settings...')
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(AppDimensions.spaceMd),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('AquaSense Settings', style: Theme.of(context).textTheme.headlineMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Preferences for your operator experience',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  if (state.errorMessage != null) _buildErrorBanner(state.errorMessage!),
+                  if (state.status == SettingsLoadStatus.saving) _buildSavingBanner(),
+                  _buildAccountSection(context, state.settings.account),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildNotificationSection(context, state.settings.notifications),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildUnitsSection(context, state.settings.measurementUnit),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildAppearanceSection(context, state.settings.appearance),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildLanguageSection(context, state.settings.language),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildApplicationSection(context, state.settings.application),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  _buildSystemSection(context, state.settings.system),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                  AquaButton(
+                    label: 'Open Device Diagnostics',
+                    icon: Icons.health_and_safety_outlined,
+                    variant: AquaButtonVariant.outline,
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const DeviceDiagnosticsScreen(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Application configuration & system preferences',
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: AppDimensions.spaceMd),
-            _buildUserSessionCard(context),
-            const SizedBox(height: AppDimensions.spaceMd),
-            _buildThemeToggleSection(context),
-            const SizedBox(height: AppDimensions.spaceMd),
-            AquaButton(
-              label: 'Open Device Diagnostics',
-              icon: Icons.health_and_safety_outlined,
-              variant: AquaButtonVariant.outline,
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const DeviceDiagnosticsScreen()),
-                );
-              },
-            ),
-            const SizedBox(height: AppDimensions.spaceMd),
-            _buildSettingsSection(
-              context,
-              'System Architecture',
-              [
-                _buildSettingsTile(
-                  context,
-                  'Application Name',
-                  AppStrings.appTitle,
-                  Icons.water_drop,
-                ),
-                _buildSettingsTile(
-                  context,
-                  'App Version',
-                  '1.0.0+1 (Auth Release)',
-                  Icons.info_outline,
-                ),
-                _buildSettingsTile(
-                  context,
-                  'Data Source Mode',
-                  'Mock Service / REST HTTPS Ready',
-                  Icons.cloud_outlined,
-                ),
-                _buildSettingsTile(
-                  context,
-                  'Target Viewport',
-                  '360px – 430px Android Layout',
-                  Icons.phone_android,
-                ),
-              ],
-            ),
-            const SizedBox(height: AppDimensions.spaceMd),
-            _buildSettingsSection(
-              context,
-              'Telemetry Settings',
-              [
-                _buildSettingsTile(
-                  context,
-                  'Monitoring Zones',
-                  'Q1, Q2, Q3, Q4 (Active)',
-                  Icons.sensors,
-                ),
-                _buildSettingsTile(
-                  context,
-                  'Irrigation Scope',
-                  'Central Field Physical System',
-                  Icons.water_drop_outlined,
-                ),
-              ],
-            ),
-          ],
+    );
+  }
+
+  Widget _buildAccountSection(BuildContext context, AccountSummary account) {
+    final theme = Theme.of(context);
+    return _section(
+      context,
+      'User & Account',
+      Icons.account_circle_outlined,
+      [
+        _valueRow('Operator', account.username, Icons.person_outline),
+        _valueRow('Email', account.email, Icons.email_outlined),
+        _valueRow('Role', account.role.toUpperCase(), Icons.badge_outlined),
+        const SizedBox(height: AppDimensions.spaceSm),
+        AquaButton(
+          label: 'Sign Out Operator',
+          icon: Icons.logout,
+          variant: AquaButtonVariant.outline,
+          onPressed: () => _handleLogout(context),
         ),
-      ),
+        const SizedBox(height: AppDimensions.spaceXs),
+        Text(
+          'Account changes are managed by authentication services.',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
     );
   }
 
-  Widget _buildUserSessionCard(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ValueListenableBuilder<AuthState>(
-      valueListenable: globalAuthNotifier,
-      builder: (context, authState, _) {
-        final session = authState.session;
-
-        return AquaCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.account_circle_outlined,
-                          color: AppColors.primary, size: 24),
-                      const SizedBox(width: AppDimensions.spaceSm),
-                      Text(
-                        'Active Operator Session',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  StatusBadge(
-                    label: session?.role.toUpperCase() ?? 'OPERATOR',
-                    colorOverride: AppColors.primary,
-                    isCompact: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppDimensions.spaceMd),
-              if (session != null) ...[
-                Row(
-                  children: [
-                    Expanded(
-                      child: SensorMetricTile(
-                        label: 'Operator Name',
-                        value: session.username,
-                        icon: Icons.person,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    Expanded(
-                      child: SensorMetricTile(
-                        label: 'Email',
-                        value: session.email,
-                        icon: Icons.email,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppDimensions.spaceMd),
-              ],
-              AquaButton(
-                label: 'Sign Out Operator',
-                icon: Icons.logout,
-                variant: AquaButtonVariant.outline,
-                onPressed: () => _handleLogout(context),
-              ),
-            ],
+  Widget _buildNotificationSection(
+    BuildContext context,
+    NotificationPreferences preferences,
+  ) {
+    return _section(
+      context,
+      'Notification Preferences',
+      Icons.notifications_outlined,
+      [
+        _switchTile(
+          'System alerts',
+          'Receive important application health alerts',
+          preferences.systemAlerts,
+          (value) => _notifier.setNotifications(
+            preferences.copyWith(systemAlerts: value),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildThemeToggleSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeModeNotifier,
-      builder: (context, currentMode, _) {
-        final isDark = currentMode == ThemeMode.dark;
-
-        return AquaCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        isDark ? Icons.dark_mode : Icons.light_mode,
-                        color: AppColors.primary,
-                      ),
-                      const SizedBox(width: AppDimensions.spaceSm),
-                      Text(
-                        'Visual Theme Mode',
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  StatusBadge(
-                    label: isDark ? 'DARK MODE' : 'LIGHT MODE',
-                    colorOverride: isDark ? AppColors.primary : AppColors.primaryDark,
-                    isCompact: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppDimensions.spaceMd),
-              AquaChipSelector<ThemeMode>(
-                options: const [
-                  AquaChipOption(
-                    value: ThemeMode.dark,
-                    label: 'Dark Theme (Default)',
-                    icon: Icons.dark_mode,
-                  ),
-                  AquaChipOption(
-                    value: ThemeMode.light,
-                    label: 'Light Theme',
-                    icon: Icons.light_mode,
-                  ),
-                ],
-                selectedValue: currentMode,
-                onSelected: (mode) {
-                  themeModeNotifier.value = mode;
-                },
-              ),
-            ],
+        ),
+        _switchTile(
+          'Irrigation updates',
+          'Receive field-level irrigation command updates',
+          preferences.irrigationUpdates,
+          (value) => _notifier.setNotifications(
+            preferences.copyWith(irrigationUpdates: value),
           ),
-        );
-      },
+        ),
+        _switchTile(
+          'Stale telemetry',
+          'Be notified when monitoring data needs attention',
+          preferences.staleTelemetry,
+          (value) => _notifier.setNotifications(
+            preferences.copyWith(staleTelemetry: value),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSettingsSection(
+  Widget _buildUnitsSection(BuildContext context, MeasurementUnit unit) {
+    return _section(
+      context,
+      'Measurement Units',
+      Icons.straighten_outlined,
+      [
+        const Text('Used in settings-owned presentation only.'),
+        const SizedBox(height: AppDimensions.spaceSm),
+        AquaChipSelector<MeasurementUnit>(
+          options: const [
+            AquaChipOption(value: MeasurementUnit.metric, label: 'Metric', icon: Icons.public),
+            AquaChipOption(value: MeasurementUnit.imperial, label: 'Imperial', icon: Icons.public),
+          ],
+          selectedValue: unit,
+          onSelected: _notifier.setMeasurementUnit,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAppearanceSection(BuildContext context, SettingsAppearance appearance) {
+    return _section(
+      context,
+      'Appearance',
+      Icons.palette_outlined,
+      [
+        AquaChipSelector<SettingsAppearance>(
+          options: const [
+            AquaChipOption(value: SettingsAppearance.system, label: 'System', icon: Icons.brightness_auto),
+            AquaChipOption(value: SettingsAppearance.light, label: 'Light', icon: Icons.light_mode),
+            AquaChipOption(value: SettingsAppearance.dark, label: 'Dark', icon: Icons.dark_mode),
+          ],
+          selectedValue: appearance,
+          onSelected: _notifier.setAppearance,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLanguageSection(BuildContext context, SettingsLanguage language) {
+    return _section(
+      context,
+      'Language',
+      Icons.translate_outlined,
+      [
+        AquaChipSelector<SettingsLanguage>(
+          options: const [
+            AquaChipOption(value: SettingsLanguage.english, label: 'English', icon: Icons.language),
+            AquaChipOption(value: SettingsLanguage.filipino, label: 'Filipino', icon: Icons.language),
+          ],
+          selectedValue: language,
+          onSelected: _notifier.setLanguage,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildApplicationSection(
+    BuildContext context,
+    ApplicationInformation application,
+  ) {
+    return _section(
+      context,
+      'Application Information',
+      Icons.info_outline,
+      [
+        _valueRow('Application', application.appName, Icons.water_drop_outlined),
+        _valueRow('Version', application.version, Icons.numbers),
+        _valueRow('Data source', application.dataSource, Icons.cloud_outlined),
+      ],
+    );
+  }
+
+  Widget _buildSystemSection(BuildContext context, SystemPreferences preferences) {
+    return _section(
+      context,
+      'System Preferences',
+      Icons.tune_outlined,
+      [
+        _switchTile(
+          '24-hour time',
+          'Use 24-hour formatting in settings-owned presentation',
+          preferences.use24HourTime,
+          (value) => _notifier.setSystemPreferences(
+            preferences.copyWith(use24HourTime: value),
+          ),
+        ),
+        _switchTile(
+          'Confirm destructive actions',
+          'Ask for confirmation before supported destructive actions',
+          preferences.confirmDestructiveActions,
+          (value) => _notifier.setSystemPreferences(
+            preferences.copyWith(confirmDestructiveActions: value),
+          ),
+        ),
+        const Divider(),
+        _valueRow(
+          'Irrigation configuration',
+          'Managed by Central Field Control',
+          Icons.water_drop_outlined,
+        ),
+        Text(
+          'Settings does not configure Q1-Q4 irrigation behavior, pumps, or valves.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Widget _section(
     BuildContext context,
     String title,
-    List<Widget> tiles,
+    IconData icon,
+    List<Widget> children,
   ) {
     return AquaCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.primary,
+          Row(
+            children: [
+              Icon(icon, color: AppColors.primary),
+              const SizedBox(width: AppDimensions.spaceSm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
+              ),
+            ],
           ),
           const SizedBox(height: AppDimensions.spaceSm),
           const Divider(),
-          ...tiles,
+          ...children,
         ],
       ),
     );
   }
 
-  Widget _buildSettingsTile(
-    BuildContext context,
-    String label,
-    String subtitle,
-    IconData icon,
-  ) {
-    final theme = Theme.of(context);
-
+  Widget _valueRow(String label, String value, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppDimensions.spaceSm),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: theme.textTheme.bodyMedium?.color),
+          Icon(icon, size: 20, color: AppColors.primary),
           const SizedBox(width: AppDimensions.spaceMd),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: theme.textTheme.titleSmall,
-                ),
-                Text(
-                  subtitle,
-                  style: theme.textTheme.bodyMedium,
-                ),
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(value),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _switchTile(
+    String title,
+    String subtitle,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
+    return Material(
+      color: Colors.transparent,
+      child: SwitchListTile.adaptive(
+        contentPadding: EdgeInsets.zero,
+        title: Text(title),
+        subtitle: Text(subtitle),
+        value: value,
+        onChanged: _notifier.state.isBusy ? null : onChanged,
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return _feedbackBanner(
+      Icons.error_outline,
+      AppColors.alertError,
+      message,
+      action: TextButton(
+        onPressed: _notifier.load,
+        child: const Text('Retry'),
+      ),
+    );
+  }
+
+  Widget _buildSavingBanner() {
+    return _feedbackBanner(
+      Icons.sync,
+      AppColors.primary,
+      'Saving settings...',
+    );
+  }
+
+  Widget _feedbackBanner(
+    IconData icon,
+    Color color,
+    String message, {
+    Widget? action,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: AppDimensions.spaceMd),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.spaceSm,
+        vertical: AppDimensions.spaceXs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: AppDimensions.spaceSm),
+          Expanded(child: Text(message)),
+          ?action,
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirmed = await AquaDialog.show(
+      context: context,
+      title: 'Sign Out of AquaSense?',
+      message: 'Are you sure you want to end your operator session?',
+      confirmText: 'Sign Out',
+      icon: Icons.logout,
+      iconColor: AppColors.alertError,
+    );
+    if (confirmed == true) await globalAuthNotifier.logout();
   }
 }
