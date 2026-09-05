@@ -143,6 +143,82 @@
         "/^mkdir -p \"openspec/changes/archive\" && mv \"openspec/changes/add-settings\" \"openspec/changes/archive/2026-09-05-add-settings\"$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^openspec new change \"integrate-aquasense-api\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions proposal --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions design --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions specs --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions tasks --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec validate integrate-aquasense-api --type change --strict$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"integrate-aquasense-api\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions apply --change \"integrate-aquasense-api\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter pub get$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/api$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/api lib/features/auth/data/datasources/api_auth_service\\.dart lib/features/zones/data/repositories/api_zone_repository\\.dart lib/features/control/data/repositories/api_control_repository\\.dart$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/api lib/features/diagnostics/data/repositories/api_diagnostics_repository\\.dart lib/features/auth/data/datasources/api_auth_service\\.dart lib/features/zones/data/repositories/api_zone_repository\\.dart lib/features/control/data/repositories/api_control_repository\\.dart$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter test test/api_integration_test\\.dart --reporter expanded$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter analyze lib/core/api lib/features/auth/data/datasources/api_auth_service\\.dart lib/features/zones/data/repositories/api_zone_repository\\.dart lib/features/control/data/repositories/api_control_repository\\.dart lib/features/diagnostics/data/repositories/api_diagnostics_repository\\.dart$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^flutter test --reporter compact$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec validate api-integration --type spec --strict$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^if \\[\\[ -e \"openspec/changes/archive/2026-09-05-integrate-aquasense-api\" \\]\\]; then printf 'exists\\\\n'; else printf 'available\\\\n'; fi$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^mkdir -p \"openspec/changes/archive\" && mv \"openspec/changes/integrate-aquasense-api\" \"openspec/changes/archive/2026-09-05-integrate-aquasense-api\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
