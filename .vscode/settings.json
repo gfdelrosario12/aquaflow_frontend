@@ -75,6 +75,42 @@
         "/^openspec validate --all --strict$/": {
             "approve": true,
             "matchCommandLine": true
+        },
+        "/^openspec store list --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec new change \"add-settings\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"add-settings\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions proposal --change \"add-settings\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions design --change \"add-settings\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions specs --change \"add-settings\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec instructions tasks --change \"add-settings\" --json$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec validate add-settings --type change --strict$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^openspec status --change \"add-settings\"$/": {
+            "approve": true,
+            "matchCommandLine": true
         }
     }
 }
