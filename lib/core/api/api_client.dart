@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../security/sensitive_data_redactor.dart';
 import 'api_config.dart';
 import 'api_errors.dart';
 import 'api_token_store.dart';
@@ -62,8 +64,12 @@ class ApiClient {
     bool authorized = true,
     bool retryable = false,
   }) async {
+    config.ensureSecureTransport();
+
     final uri = _buildUri(path, query);
     final headers = await _headers(authorized);
+    _diagnoseRequest(method, uri, headers, body);
+
     final response = await _send(
       method,
       uri,
@@ -125,7 +131,8 @@ class ApiClient {
           config.connectTimeout + config.receiveTimeout,
         );
         final response = await http.Response.fromStream(streamed);
-        if (retryable && _isRetryableStatus(response.statusCode) &&
+        if (retryable &&
+            _isRetryableStatus(response.statusCode) &&
             attempt < config.maxGetRetries) {
           await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
           attempt++;
@@ -143,9 +150,17 @@ class ApiClient {
           message: 'The API request timed out.',
           cause: error,
         );
-      } on ApiException {
+      }       on ApiException {
         rethrow;
       } catch (error) {
+        if (_isTlsFailure(error)) {
+          throw ApiException(
+            kind: ApiErrorKind.transportSecurity,
+            message:
+                'TLS connection to the AquaSense API could not be established securely.',
+            cause: error,
+          );
+        }
         if (retryable && attempt < config.maxGetRetries) {
           await Future<void>.delayed(Duration(milliseconds: 100 * (attempt + 1)));
           attempt++;
@@ -214,11 +229,20 @@ class ApiClient {
     );
   }
 
+  bool _isTlsFailure(Object error) {
+    final name = error.runtimeType.toString();
+    return name.contains('Handshake') ||
+        name.contains('Tls') ||
+        name.contains('Certificate') ||
+        error.toString().toLowerCase().contains('certificate');
+  }
+
   bool _isRetryableStatus(int statusCode) =>
       statusCode == 408 || statusCode == 425 || statusCode == 429 || statusCode >= 500;
 
   ApiErrorKind _errorKind(int statusCode) {
-    if (statusCode == 401 || statusCode == 403) return ApiErrorKind.authentication;
+    if (statusCode == 401) return ApiErrorKind.authentication;
+    if (statusCode == 403) return ApiErrorKind.authorization;
     if (statusCode == 400 || statusCode == 422) return ApiErrorKind.validation;
     if (statusCode >= 500) return ApiErrorKind.server;
     return ApiErrorKind.unexpected;
@@ -226,9 +250,32 @@ class ApiClient {
 
   String _errorMessage(Object? decoded, int statusCode) {
     if (decoded is Map<String, dynamic> && decoded['message'] is String) {
-      return decoded['message'] as String;
+      return SensitiveDataRedactor.redactString(decoded['message'] as String);
+    }
+    if (statusCode == 403) {
+      return 'You are not authorized to perform this operation.';
+    }
+    if (statusCode == 401) {
+      return 'Authentication is required or the session has expired.';
     }
     return 'AquaSense API request failed with status $statusCode.';
+  }
+
+  void _diagnoseRequest(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    Map<String, Object?>? body,
+  ) {
+    if (!kDebugMode) return;
+    final safeHeaders = SensitiveDataRedactor.redactHeaders(headers);
+    final safeBody =
+        body == null ? null : SensitiveDataRedactor.redactMap(body);
+    debugPrint(
+      SensitiveDataRedactor.redactString(
+        'ApiClient $method ${uri.path} headers=$safeHeaders body=$safeBody',
+      ),
+    );
   }
 
   void close() => httpClient.close();

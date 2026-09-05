@@ -2,6 +2,8 @@ enum ApiErrorKind {
   timeout,
   connectivity,
   authentication,
+  authorization,
+  transportSecurity,
   validation,
   server,
   decoding,

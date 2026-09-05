@@ -7,9 +7,13 @@ abstract class ApiTokenStore {
   Future<void> clearTokens();
 }
 
+/// Persists only access/refresh tokens in secure platform storage.
+/// Passwords and Authorization headers MUST never be written here.
 class SecureApiTokenStore implements ApiTokenStore {
   static const accessTokenKey = 'aquasense_access_token';
   static const refreshTokenKey = 'aquasense_refresh_token';
+
+  static const allowedKeys = {accessTokenKey, refreshTokenKey};
 
   final SecureStorageService storage;
 
@@ -23,7 +27,10 @@ class SecureApiTokenStore implements ApiTokenStore {
   Future<String?> readRefreshToken() => storage.read(key: refreshTokenKey);
 
   @override
-  Future<void> writeTokens({required String accessToken, String? refreshToken}) async {
+  Future<void> writeTokens({
+    required String accessToken,
+    String? refreshToken,
+  }) async {
     await storage.write(key: accessTokenKey, value: accessToken);
     if (refreshToken != null && refreshToken.isNotEmpty) {
       await storage.write(key: refreshTokenKey, value: refreshToken);

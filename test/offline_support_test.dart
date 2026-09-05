@@ -91,6 +91,7 @@ void main() {
     expect(
       gate.check(
         authenticated: true,
+        irrigationAuthorized: true,
         controllerConfirmed: true,
         target: 'ENTIRE FIELD',
         confirmation: CacheConfirmation.live,
@@ -100,6 +101,7 @@ void main() {
     expect(
       gate.check(
         authenticated: true,
+        irrigationAuthorized: true,
         controllerConfirmed: true,
         target: 'Q1',
         confirmation: CacheConfirmation.live,
@@ -120,11 +122,62 @@ void main() {
 
     final decision = gate.check(
       authenticated: true,
+      irrigationAuthorized: true,
       controllerConfirmed: true,
       target: 'ENTIRE FIELD',
       confirmation: CacheConfirmation.live,
     );
     expect(decision.allowed, isTrue);
+  });
+
+  test('irrigation gate rejects unauthenticated or unauthorized operators', () async {
+    final probe = FakeConnectivityProbe(reachable: true);
+    final connectivity = ConnectivityNotifier(probe: probe);
+    final gate = IrrigationCommandGate(connectivity);
+    addTearDown(() async {
+      connectivity.dispose();
+      await probe.dispose();
+    });
+    await connectivity.refresh();
+
+    expect(
+      gate.check(
+        authenticated: false,
+        irrigationAuthorized: true,
+        controllerConfirmed: true,
+        target: 'ENTIRE FIELD',
+        confirmation: CacheConfirmation.live,
+      ).allowed,
+      isFalse,
+    );
+    expect(
+      gate.check(
+        authenticated: true,
+        irrigationAuthorized: false,
+        controllerConfirmed: true,
+        target: 'ENTIRE FIELD',
+        confirmation: CacheConfirmation.live,
+      ).message,
+      contains('Unauthorized'),
+    );
+  });
+
+  test('offline cache scrubbing drops tokens and passwords', () async {
+    final storage = JsonOfflineStorage();
+    await storage.write('measurement:Q1', {
+      'waterLevel': 4.2,
+      'password': 'secret',
+      'accessToken': 'tok',
+      'Authorization': 'Bearer abc',
+      'nested': {'refreshToken': 'r', 'ok': true},
+    });
+    final cached = await storage.read('measurement:Q1');
+    expect(cached?['waterLevel'], 4.2);
+    expect(cached?.containsKey('password'), isFalse);
+    expect(cached?.containsKey('accessToken'), isFalse);
+    expect(cached?.containsKey('Authorization'), isFalse);
+    expect((cached?['nested'] as Map)['ok'], isTrue);
+    expect((cached?['nested'] as Map).containsKey('refreshToken'), isFalse);
   });
 
   test('offline resource falls back to cache and recovery sync runs once', () async {

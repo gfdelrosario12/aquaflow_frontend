@@ -195,34 +195,23 @@ class _ControlConfirmationDialogState extends State<ControlConfirmationDialog> {
               style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 6),
-            DropdownButton<ControlUserRole>(
-              value: _activeRole,
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem(
-                  value: ControlUserRole.operator,
-                  child: Text('Operator (Authorized)'),
-                ),
-                DropdownMenuItem(
-                  value: ControlUserRole.admin,
-                  child: Text('Admin (Authorized)'),
-                ),
-                DropdownMenuItem(
-                  value: ControlUserRole.viewer,
-                  child: Text('Viewer (Read-Only • Unauthorized)'),
-                ),
-              ],
-              onChanged: (role) {
-                if (role != null) {
-                  setState(() => _activeRole = role);
-                }
-              },
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+              ),
+              child: Text(
+                _roleLabel(_activeRole),
+                style: theme.textTheme.bodyMedium,
+              ),
             ),
 
             if (isUnauthorized) ...[
               const SizedBox(height: 8),
               Text(
-                '⚠️ Viewer role cannot execute hardware control commands.',
+                'Viewer role cannot execute hardware control commands. Re-authenticate with an authorized operator account — zone-level irrigation is not available.',
                 style: theme.textTheme.bodySmall?.copyWith(color: AppColors.alertError),
               ),
             ],
@@ -252,5 +241,16 @@ class _ControlConfirmationDialogState extends State<ControlConfirmationDialog> {
         ),
       ],
     );
+  }
+
+  String _roleLabel(ControlUserRole role) {
+    switch (role) {
+      case ControlUserRole.admin:
+        return 'Admin (Authorized)';
+      case ControlUserRole.operator:
+        return 'Operator (Authorized)';
+      case ControlUserRole.viewer:
+        return 'Viewer (Read-Only • Unauthorized)';
+    }
   }
 }

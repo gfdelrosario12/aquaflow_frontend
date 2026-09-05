@@ -35,10 +35,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (_formKey.currentState?.validate() ?? false) {
       FocusScope.of(context).unfocus();
-      await _notifier.login(
-        _identifierController.text.trim(),
-        _passwordController.text,
-      );
+      final password = _passwordController.text;
+      try {
+        await _notifier.login(
+          _identifierController.text.trim(),
+          password,
+        );
+      } finally {
+        // Discard password from the field after the attempt.
+        _passwordController.clear();
+      }
     }
   }
 
