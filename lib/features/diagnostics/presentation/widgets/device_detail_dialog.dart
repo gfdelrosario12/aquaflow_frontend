@@ -2,23 +2,71 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../control/domain/models/control_enums.dart';
 import '../../../control/presentation/control_screen.dart';
+import '../../../nodes/domain/models/models.dart';
+import '../../../nodes/presentation/widgets/transmission_interval_dialog.dart';
 import '../../domain/models/models.dart';
 
 class DeviceDetailDialog extends StatelessWidget {
   final DeviceDiagnostic device;
+  final ControlUserRole userRole;
+  final Future<bool> Function(
+    int intervalSeconds, {
+    bool isAdaptive,
+    String? reason,
+  })? onConfigureInterval;
 
   const DeviceDetailDialog({
     super.key,
     required this.device,
+    this.userRole = ControlUserRole.operator,
+    this.onConfigureInterval,
   });
 
-  static Future<void> show(BuildContext context, DeviceDiagnostic device) {
+  static Future<void> show(
+    BuildContext context,
+    DeviceDiagnostic device, {
+    ControlUserRole userRole = ControlUserRole.operator,
+    Future<bool> Function(
+      int intervalSeconds, {
+      bool isAdaptive,
+      String? reason,
+    })? onConfigureInterval,
+  }) {
     return showDialog(
       context: context,
-      builder: (context) => DeviceDetailDialog(device: device),
+      builder: (context) => DeviceDetailDialog(
+        device: device,
+        userRole: userRole,
+        onConfigureInterval: onConfigureInterval,
+      ),
     );
   }
+
+  Esp32Node get _asNode => Esp32Node(
+        id: device.id,
+        macAddress: device.macAddress ?? '00:00:00:00:00:00',
+        displayName: device.name,
+        coordinates: SpatialCoordinates(
+          latitude: device.latitude,
+          longitude: device.longitude,
+          localX: device.localX,
+          localY: device.localY,
+        ),
+        transmissionConfig: TransmissionConfig(
+          intervalSeconds: device.transmissionIntervalSeconds ?? 300,
+          isAdaptive: device.isAdaptiveInterval,
+          adaptiveReason: device.adaptiveReason,
+          lastConfiguredAt: device.lastSeen,
+        ),
+        isOnline: device.isOnline,
+        batteryPercent: device.batteryPercent,
+        batteryVoltage: device.batteryVoltage,
+        rssiDbm: device.rssiDbm,
+        snrDb: device.snrDb,
+        lastSeen: device.lastSeen,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -33,14 +81,17 @@ class DeviceDetailDialog extends StatelessWidget {
       title: Row(
         children: [
           Icon(
-            isController ? Icons.settings_remote : (isNode ? Icons.sensors : Icons.router),
+            isController
+                ? Icons.settings_remote
+                : (isNode ? Icons.sensors : Icons.router),
             color: AppColors.primary,
           ),
           const SizedBox(width: AppDimensions.spaceSm),
           Expanded(
             child: Text(
               device.name,
-              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -51,7 +102,6 @@ class DeviceDetailDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Scope & Health Badges Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -60,11 +110,13 @@ class DeviceDetailDialog extends StatelessWidget {
                   compact: true,
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     'SCOPE: ${device.targetScope}',
@@ -77,8 +129,14 @@ class DeviceDetailDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppDimensions.spaceMd),
-
-            // Hardware Telemetry Metrics Grid
+            if (device.macAddress != null) ...[
+              Text(
+                'MAC: ${device.macAddress}',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: AppDimensions.spaceSm),
+            ],
             if (device.batteryPercent != null || device.rssiDbm != null) ...[
               Row(
                 children: [
@@ -86,9 +144,12 @@ class DeviceDetailDialog extends StatelessWidget {
                     Expanded(
                       child: SensorMetricTile(
                         label: 'Battery Level',
-                        value: '${device.batteryPercent}% (${device.batteryVoltage?.toStringAsFixed(2)}V)',
+                        value:
+                            '${device.batteryPercent}% (${device.batteryVoltage?.toStringAsFixed(2)}V)',
                         icon: Icons.battery_charging_full,
-                        color: (device.batteryPercent ?? 100) < 20 ? AppColors.alertWarning : AppColors.primary,
+                        color: (device.batteryPercent ?? 100) < 20
+                            ? AppColors.alertWarning
+                            : AppColors.primary,
                       ),
                     ),
                   if (device.rssiDbm != null)
@@ -98,18 +159,20 @@ class DeviceDetailDialog extends StatelessWidget {
                         value: '${device.rssiDbm} dBm',
                         unit: 'SNR ${device.snrDb?.toStringAsFixed(1)} dB',
                         icon: Icons.cell_tower,
-                        color: (device.rssiDbm ?? -90) < -100 ? AppColors.alertWarning : AppColors.primary,
+                        color: (device.rssiDbm ?? -90) < -100
+                            ? AppColors.alertWarning
+                            : AppColors.primary,
                       ),
                     ),
                 ],
               ),
               const SizedBox(height: AppDimensions.spaceSm),
             ],
-
             if (device.lastMeasurement != null) ...[
               Text(
                 'Latest Telemetry Measurement:',
-                style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 2),
               Text(
@@ -118,8 +181,72 @@ class DeviceDetailDialog extends StatelessWidget {
               ),
               const SizedBox(height: AppDimensions.spaceSm),
             ],
-
-            // Diagnostics Message Box
+            if (isNode) ...[
+              if (device.latitude != null ||
+                  device.longitude != null ||
+                  device.localX != null ||
+                  device.localY != null) ...[
+                Row(
+                  children: [
+                    if (device.latitude != null || device.longitude != null) ...[
+                      Expanded(
+                        child: Text(
+                          'GPS: ${device.latitude != null ? device.latitude!.toStringAsFixed(4) : ''}, ${device.longitude != null ? device.longitude!.toStringAsFixed(4) : ''}',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    if (device.localX != null || device.localY != null) ...[
+                      const SizedBox(width: AppDimensions.spaceSm),
+                      Expanded(
+                        child: Text(
+                          'Local: ${device.localX != null ? device.localX!.toStringAsFixed(1) : ''}m, ${device.localY != null ? device.localY!.toStringAsFixed(1) : ''}m',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.spaceSm),
+              ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'Interval: ${device.transmissionIntervalSeconds ?? 300}s${device.isAdaptiveInterval ? ' (Adaptive)' : ''}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: device.isAdaptiveInterval
+                            ? AppColors.accent
+                            : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (onConfigureInterval != null) ...[
+                const SizedBox(height: AppDimensions.spaceSm),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    await TransmissionIntervalDialog.show(
+                      context,
+                      node: _asNode,
+                      userRole: userRole,
+                      onConfigure: onConfigureInterval!,
+                    );
+                  },
+                  icon: const Icon(Icons.timer_outlined, size: 18),
+                  label: const Text('Configure Transmission Interval'),
+                ),
+              ],
+              const SizedBox(height: AppDimensions.spaceSm),
+            ],
+            const SizedBox(height: AppDimensions.spaceSm),
             Container(
               padding: const EdgeInsets.all(AppDimensions.spaceSm),
               decoration: BoxDecoration(
@@ -141,10 +268,11 @@ class DeviceDetailDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppDimensions.spaceSm),
-
             Text(
               'Last Heartbeat Seen: ${_formatTime(device.lastSeen)}',
-              style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.6)),
+              style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.textTheme.bodySmall?.color
+                      ?.withValues(alpha: 0.6)),
             ),
             const SizedBox(height: AppDimensions.spaceSm),
             if (isNode)
@@ -165,7 +293,9 @@ class DeviceDetailDialog extends StatelessWidget {
                 MaterialPageRoute(builder: (context) => const ControlScreen()),
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
             child: const Text('Open Control Screen'),
           ),
         TextButton(
@@ -192,7 +322,8 @@ class DeviceDetailDialog extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+          const Icon(Icons.visibility_outlined,
+              size: 18, color: AppColors.primary),
           const SizedBox(width: AppDimensions.spaceSm),
           Expanded(
             child: Text(
@@ -215,8 +346,13 @@ class DeviceDetailDialog extends StatelessWidget {
         _detailRow('Uplink', device.uplinkStatus ?? 'N/A'),
         _detailRow('Downlink', device.downlinkStatus ?? 'N/A'),
         _detailRow('Backhaul', device.backhaulStatus ?? 'N/A'),
-        _detailRow('Retransmission', device.packetRetransmissionRate == null ? 'N/A' : '${device.packetRetransmissionRate!.toStringAsFixed(1)}%'),
-        _detailRow('Last communication', _formatTime(device.lastCommunication ?? device.lastSeen)),
+        _detailRow(
+            'Retransmission',
+            device.packetRetransmissionRate == null
+                ? 'N/A'
+                : '${device.packetRetransmissionRate!.toStringAsFixed(1)}%'),
+        _detailRow('Last communication',
+            _formatTime(device.lastCommunication ?? device.lastSeen)),
       ],
     );
   }
@@ -225,14 +361,16 @@ class DeviceDetailDialog extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Central controller diagnostics', style: theme.textTheme.titleSmall),
+        Text('Central controller diagnostics',
+            style: theme.textTheme.titleSmall),
         const SizedBox(height: AppDimensions.spaceSm),
         _detailRow('Communication', device.communicationStatus ?? 'N/A'),
         _detailRow('Pump state', device.pumpState ?? 'N/A'),
         _detailRow('Main valve', device.valveState ?? 'N/A'),
         _detailRow('Last command', device.lastCommand ?? 'N/A'),
         _detailRow('Command result', device.lastCommandResult ?? 'N/A'),
-        _detailRow('Last communication', _formatTime(device.lastCommunication ?? device.lastSeen)),
+        _detailRow('Last communication',
+            _formatTime(device.lastCommunication ?? device.lastSeen)),
       ],
     );
   }
@@ -244,7 +382,9 @@ class DeviceDetailDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(width: 132, child: Text(label)),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600))),
+          Expanded(
+              child: Text(value,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
         ],
       ),
     );

@@ -15,6 +15,7 @@ import 'package:aquaflow_frontend/core/api/api_errors.dart';
 import 'package:aquaflow_frontend/features/auth/data/datasources/auth_service.dart';
 import 'package:aquaflow_frontend/features/auth/data/repositories/auth_repository.dart';
 import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:aquaflow_frontend/features/awd/domain/models/awd_analytics_summary.dart';
 import 'package:aquaflow_frontend/features/awd/domain/models/awd_threshold_config.dart';
 import 'package:aquaflow_frontend/features/awd/domain/services/awd_rule_engine.dart';
 import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';

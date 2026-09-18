@@ -1,4 +1,6 @@
 import '../../domain/models/monitoring_zone.dart';
+import '../../../nodes/domain/models/spatial_coordinates.dart';
+import '../../../nodes/domain/models/transmission_config.dart';
 
 enum ZoneMockState { normal, empty, stale, unavailable, error }
 
@@ -40,6 +42,18 @@ class MockZoneDataSource implements ZoneDataSource {
           3.8, 4.0, 4.1, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9, 5.0, 5.1, 5.2
         ],
         waterLevelHistory7d: const [2.5, 3.0, 3.8, 4.2, 4.5, 5.0, 5.2],
+        assignedNodeIds: const ['NODE-Q1'],
+        coordinates: const SpatialCoordinates(
+          latitude: 14.1524,
+          longitude: 121.2431,
+          localX: 25.0,
+          localY: 75.0,
+        ),
+        transmissionConfig: TransmissionConfig(
+          intervalSeconds: 300,
+          isAdaptive: false,
+          lastConfiguredAt: now.subtract(const Duration(days: 2)),
+        ),
       ),
       MonitoringZone(
         id: 'zone-q2',
@@ -64,6 +78,19 @@ class MockZoneDataSource implements ZoneDataSource {
           3.8, 3.6, 3.4, 3.2, 3.0, 2.8, 2.6, 2.5, 2.4, 2.3, 2.2, 2.1
         ],
         waterLevelHistory7d: const [5.5, 4.8, 4.2, 3.5, 2.9, 2.4, 2.1],
+        assignedNodeIds: const ['NODE-Q2'],
+        coordinates: const SpatialCoordinates(
+          latitude: 14.1538,
+          longitude: 121.2415,
+          localX: 75.0,
+          localY: 75.0,
+        ),
+        transmissionConfig: TransmissionConfig(
+          intervalSeconds: 60,
+          isAdaptive: true,
+          adaptiveReason: 'RF signal degraded, reporting fallback',
+          lastConfiguredAt: now.subtract(const Duration(hours: 4)),
+        ),
       ),
       MonitoringZone(
         id: 'zone-q3',
@@ -88,6 +115,19 @@ class MockZoneDataSource implements ZoneDataSource {
           6.0, 6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4, 7.5, 7.6, 7.7, 7.8
         ],
         waterLevelHistory7d: const [4.0, 4.8, 5.5, 6.2, 7.0, 7.4, 7.8],
+        assignedNodeIds: const ['NODE-Q3'],
+        coordinates: const SpatialCoordinates(
+          latitude: 14.1508,
+          longitude: 121.2428,
+          localX: 25.0,
+          localY: 25.0,
+        ),
+        transmissionConfig: TransmissionConfig(
+          intervalSeconds: 900,
+          isAdaptive: true,
+          adaptiveReason: 'Battery conservation mode active (<20%)',
+          lastConfiguredAt: now.subtract(const Duration(hours: 1)),
+        ),
       ),
       MonitoringZone(
         id: 'zone-q4',
@@ -112,6 +152,20 @@ class MockZoneDataSource implements ZoneDataSource {
           2.2, 2.0, 1.8, 1.5, 1.3, 1.1, 0.9, 0.8, 0.7, 0.6, 0.5
         ],
         waterLevelHistory7d: const [4.5, 3.8, 3.0, 2.2, 1.4, 0.8, 0.5],
+        assignedNodeIds: const ['NODE-Q4'],
+        coordinates: const SpatialCoordinates(
+          latitude: 14.1512,
+          longitude: 121.2445,
+          localX: 75.0,
+          localY: 25.0,
+        ),
+        transmissionConfig: TransmissionConfig(
+          intervalSeconds: 30,
+          isAdaptive: true,
+          adaptiveReason:
+              'Critical moisture threshold drop triggered rapid reporting',
+          lastConfiguredAt: now.subtract(const Duration(minutes: 30)),
+        ),
       ),
     ];
   }

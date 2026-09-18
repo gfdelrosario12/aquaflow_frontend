@@ -187,6 +187,12 @@ class ZoneContrastSummaryCard extends StatelessWidget {
                 )
               else
                 StatusBadge.zoneStatus(zone.status.name, compact: true),
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: StatusBadge.zoneStatus(zone.status.name, compact: true),
+                  ),
+                ),
             ],
           ),
           Column(
@@ -211,6 +217,13 @@ class ZoneContrastSummaryCard extends StatelessWidget {
               Text(
                 'Water: ${zone.waterLevelCm}cm',
                 style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+              Expanded(
+                child: Text(
+                  'Water: ${zone.waterLevelCm}cm',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const Icon(
                 Icons.sensors,

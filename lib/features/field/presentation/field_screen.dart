@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_dtos.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../control/domain/models/control_enums.dart';
+import '../../nodes/data/repositories/node_repository.dart';
+import '../../nodes/domain/models/models.dart';
+import '../../nodes/presentation/widgets/spatial_field_canvas_visualizer.dart';
+import '../../nodes/presentation/widgets/transmission_interval_dialog.dart';
 import '../../zones/data/datasources/zone_data_source.dart';
 import '../../zones/data/repositories/zone_repository.dart';
 import '../../zones/domain/models/monitoring_zone.dart';
@@ -9,14 +16,18 @@ import 'widgets/field_header_overview_card.dart';
 import 'widgets/quadrant_grid_visualizer.dart';
 import 'widgets/zone_detail_bottom_sheet.dart';
 
+enum FieldVisualizationMode { matrix, spatial }
+
 class FieldScreen extends StatefulWidget {
   final VoidCallback? onNavigateToControl;
   final ZoneRepository? repository;
+  final NodeRepository? nodeRepository;
 
   const FieldScreen({
     super.key,
     this.onNavigateToControl,
     this.repository,
+    this.nodeRepository,
   });
 
   @override
@@ -25,17 +36,21 @@ class FieldScreen extends StatefulWidget {
 
 class _FieldScreenState extends State<FieldScreen> {
   late final ZoneRepository _zoneRepository;
+  late final NodeRepository _nodeRepository;
 
   bool _isLoading = true;
   String? _errorMessage;
   List<MonitoringZone> _zones = [];
+  List<Esp32Node> _nodes = [];
   ZoneMockState _currentMockState = ZoneMockState.normal;
+  FieldVisualizationMode _visMode = FieldVisualizationMode.matrix;
   String? _selectedZoneCode;
 
   @override
   void initState() {
     super.initState();
     _zoneRepository = widget.repository ?? ZoneRepositoryImpl();
+    _nodeRepository = widget.nodeRepository ?? MockNodeRepository();
     _loadZones();
   }
 
@@ -51,9 +66,11 @@ class _FieldScreenState extends State<FieldScreen> {
       final zones = await _zoneRepository.fetchMonitoringZones(
         mockState: stateToFetch,
       );
+      final nodes = await _nodeRepository.fetchNodes();
       if (mounted) {
         setState(() {
           _zones = zones;
+          _nodes = nodes;
           _isLoading = false;
         });
       }
@@ -69,10 +86,40 @@ class _FieldScreenState extends State<FieldScreen> {
 
   void _handleZoneSelection(MonitoringZone zone) {
     setState(() => _selectedZoneCode = zone.code);
+    final assignedNodes = _nodes
+        .where(
+          (n) =>
+              zone.assignedNodeIds.contains(n.id) ||
+              n.assignedZoneId == zone.id ||
+              n.assignedZoneId == zone.code,
+        )
+        .toList();
     ZoneDetailBottomSheet.show(
       context,
       zone: zone,
+      assignedNodes: assignedNodes,
       onNavigateToControl: widget.onNavigateToControl,
+      onConfigureInterval: (node) => _configureNodeInterval(node),
+    );
+  }
+
+  Future<void> _configureNodeInterval(Esp32Node node) async {
+    await TransmissionIntervalDialog.show(
+      context,
+      node: node,
+      userRole: ControlUserRole.operator,
+      onConfigure: (interval, {bool isAdaptive = false, String? reason}) async {
+        await _nodeRepository.configureTransmissionInterval(
+          node.id,
+          TransmissionConfigDto(
+            intervalSeconds: interval,
+            isAdaptive: isAdaptive,
+            reason: reason,
+          ),
+        );
+        await _loadZones();
+        return true;
+      },
     );
   }
 
@@ -144,17 +191,65 @@ class _FieldScreenState extends State<FieldScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(theme),
+            const SizedBox(height: AppDimensions.spaceSm),
+            // Mode Selector Bar
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  ChoiceChip(
+                    avatar: const Icon(Icons.grid_view, size: 16),
+                    label: const Text('Matrix Grid'),
+                    selected: _visMode == FieldVisualizationMode.matrix,
+                    onSelected: (_) => setState(
+                      () => _visMode = FieldVisualizationMode.matrix,
+                    ),
+                  ),
+                  const SizedBox(width: AppDimensions.spaceSm),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.map_outlined, size: 16),
+                    label: const Text('Spatial Field Map'),
+                    selected: _visMode == FieldVisualizationMode.spatial,
+                    onSelected: (_) => setState(
+                      () => _visMode = FieldVisualizationMode.spatial,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: AppDimensions.spaceMd),
             FieldHeaderOverviewCard(
               zones: _zones,
               isStale: isStale,
             ),
             const SizedBox(height: AppDimensions.spaceLg),
-            QuadrantGridVisualizer(
-              zones: _zones,
-              selectedZoneCode: _selectedZoneCode,
-              onZoneSelected: _handleZoneSelection,
-            ),
+            if (_visMode == FieldVisualizationMode.spatial)
+              SpatialFieldCanvasVisualizer(
+                nodes: _nodes,
+                onNodeSelected: (node) {
+                  final zone = _zones
+                      .where(
+                        (z) =>
+                            z.id == node.assignedZoneId ||
+                            z.code == node.assignedZoneId ||
+                            z.code.toLowerCase() ==
+                                node.assignedZoneId
+                                    ?.toLowerCase()
+                                    .replaceAll('zone-', ''),
+                      )
+                      .firstOrNull;
+                  if (zone != null) {
+                    _handleZoneSelection(zone);
+                  }
+                },
+                onConfigureInterval: (node) => _configureNodeInterval(node),
+              )
+            else
+              QuadrantGridVisualizer(
+                zones: _zones,
+                selectedZoneCode: _selectedZoneCode,
+                onZoneSelected: _handleZoneSelection,
+              ),
             const SizedBox(height: AppDimensions.spaceLg),
             Text(
               'Detailed Quadrant Telemetry List',
@@ -291,7 +386,7 @@ class _FieldScreenState extends State<FieldScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Q1–Q4 display environmental & soil telemetry. Physical irrigation control is managed centrally under the Control tab.',
+                  AppStrings.zoneNotice,
                   style: theme.textTheme.bodySmall,
                 ),
               ],

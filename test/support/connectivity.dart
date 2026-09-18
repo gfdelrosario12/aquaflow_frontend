@@ -3,4 +3,6 @@
 // can import this single helper without repeating the library import.
 
 export 'package:aquaflow_frontend/core/offline/connectivity_service.dart'
-    show FakeConnectivityProbe, ConnectivityNotifier, ConnectivityState;
+    show FakeConnectivityProbe, ConnectivityNotifier;
+export 'package:aquaflow_frontend/core/offline/offline_models.dart'
+    show ConnectivityState;

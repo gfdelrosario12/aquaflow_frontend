@@ -6,11 +6,11 @@ Defines domain structures, telemetry data models, and monitoring views for indep
 ## Requirements
 
 ### Requirement: Quadrant monitoring zones definition
-The application MUST model Q1, Q2, Q3, and Q4 strictly as independent telemetry monitoring zones providing soil moisture, water level, and sensor status telemetry.
+The application MUST model monitoring zones as dynamically configurable observational zones within a field supporting arbitrary zone counts (such as 1, 2, 4, 6, 8, or more), providing soil moisture, water level, and environmental telemetry while strictly avoiding hardcoded quadrant limitations.
 
 #### Scenario: Displaying telemetry for monitoring zones
 - **WHEN** the user views zone telemetry in the Field or Home screens
-- **THEN** readings for Q1, Q2, Q3, and Q4 are displayed independently with moisture and water level metrics.
+- **THEN** readings for all dynamically configured monitoring zones in the field are displayed independently with moisture and water level metrics, regardless of whether 1, 2, 4, 6, 8, or more zones are provisioned.
 
 ### Requirement: Strict prohibition of zone-level irrigation controls
 The application MUST NOT present or permit zone-specific irrigation triggers or zone-level pump/valve control actions within monitoring zone models or views.
@@ -27,11 +27,11 @@ The system SHALL present detailed telemetry metrics for each monitoring zone (Q1
 - **THEN** water level, soil moisture, connection state (online/offline), battery percentage, RSSI, SNR, and last measurement timestamp are clearly displayed.
 
 ### Requirement: Field-level comparative zone visualization
-The system SHALL provide a comparative visual grid layout displaying all four monitoring quadrants (Q1, Q2, Q3, Q4) simultaneously, enabling immediate field-level contrast of water levels and moisture conditions.
+The system SHALL provide an adaptive comparative layout displaying all dynamically provisioned monitoring zones simultaneously, enabling immediate field-level contrast of water levels and moisture conditions across arbitrary zone counts.
 
 #### Scenario: Comparing field conditions across quadrants Q1 through Q4
 - **WHEN** the user opens the Field Monitoring screen
-- **THEN** Q1, Q2, Q3, and Q4 are rendered in a comparative grid showing status badges, moisture levels, and water depths for side-by-side assessment.
+- **THEN** all active monitoring zones returned by the backend are rendered in an adaptive comparative matrix or list displaying status badges, moisture levels, and water depths for side-by-side assessment across dynamic zones.
 
 ### Requirement: Zone selection read-only inspection
 The system SHALL allow the user to select any monitoring zone to inspect detailed sensor telemetry in a dedicated sheet or view, while strictly excluding zone-level pump or valve activation controls.
@@ -48,11 +48,11 @@ The system SHALL support loading, empty (no deployed nodes), stale (outdated mea
 - **THEN** a standardized error state component or unavailable banner is rendered with retry instructions.
 
 ### Requirement: Dedicated quarter monitoring zone analysis view
-The system SHALL provide a dedicated analysis screen/view for any selected monitoring zone (Q1, Q2, Q3, or Q4) displaying real-time water level depth, soil moisture percentage, sensor online/offline status, battery level, RSSI, SNR, and the last update timestamp.
+The system SHALL provide a dedicated analysis screen/view for any selected monitoring zone in the field, displaying real-time water level depth, soil moisture percentage, sensor online/offline status, battery level, RSSI, SNR, and the last update timestamp.
 
 #### Scenario: Navigating to individual quarter zone analysis
-- **WHEN** the user selects a monitoring zone (Q1, Q2, Q3, or Q4) from the Field Monitoring screen or Dashboard zone cards
-- **THEN** the application opens the Zone Analysis screen displaying the detailed telemetry, hardware diagnostics, and historical performance for that specific quadrant.
+- **WHEN** the user selects any monitoring zone from the Field Monitoring screen or Dashboard zone cards
+- **THEN** the application opens the Zone Analysis screen displaying detailed telemetry, hardware diagnostics, and historical performance for that specific zone.
 
 ### Requirement: Telemetry trend direction and rate analysis
 The system SHALL compute and display a trend direction indicator for the selected monitoring zone, explicitly stating whether the quadrant is becoming "wetter" (increasing water level) or "drier" (decreasing water level) alongside the estimated rate of change over time.
@@ -74,3 +74,17 @@ The system MUST NOT provide zone-level Start Irrigation, Stop Irrigation, pump c
 #### Scenario: Verifying read-only guardrails and centralized irrigation redirection
 - **WHEN** the user views the zone analysis screen for any quadrant
 - **THEN** no pump or valve control triggers are present, and a prominent redirection banner is displayed guiding the user to the centralized irrigation and field AWD controller for any watering actions.
+
+### Requirement: Multi-node dynamic zone aggregation
+The system SHALL support aggregating telemetry from one or more dynamically assigned ESP32 sensor nodes within a monitoring zone, computing composite zone water level and soil moisture metrics while displaying individual node breakdowns.
+
+#### Scenario: Displaying zone with multiple assigned nodes
+- **WHEN** a monitoring zone contains multiple assigned ESP32 sensor nodes
+- **THEN** the zone displays composite moisture and water level readings along with the count and health status of all member nodes.
+
+### Requirement: Spatial view toggle on field monitoring screen
+The system SHALL provide a view mode toggle on the Field Monitoring screen allowing users to switch seamlessly between the matrix/grid view and the spatial 2D field visualization.
+
+#### Scenario: Toggling from matrix view to spatial field view
+- **WHEN** the user taps the spatial view toggle button on the Field Monitoring screen
+- **THEN** the layout transitions from the quadrant matrix cards to the interactive 2D spatial field visualizer.

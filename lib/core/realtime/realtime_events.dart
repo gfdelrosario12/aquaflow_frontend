@@ -6,6 +6,9 @@ enum RealtimeEventType {
   irrigationEvent,
   controllerEvent,
   alert,
+  nodeStatus,
+  transmissionIntervalUpdated,
+  nodeDiscovered,
 }
 
 class RealtimeValidationException implements Exception {
@@ -40,7 +43,15 @@ class RealtimeEvent {
 
   String get aggregateKey => scope;
 
-  bool get isMonitoringScope => const {'Q1', 'Q2', 'Q3', 'Q4'}.contains(scope);
+  bool get isMonitoringScope {
+    if (const {'Q1', 'Q2', 'Q3', 'Q4'}.contains(scope)) return true;
+    // Reject legacy quadrant-like scopes outside Q1–Q4.
+    if (RegExp(r'^Q\d+$').hasMatch(scope)) return false;
+    if (scope.startsWith('NODE-') || scope.startsWith('ESP32-')) return true;
+    // Dynamic node aggregate keys (alphanumeric identifiers).
+    return RegExp(r'^[A-Za-z][A-Za-z0-9_\-\.:]{2,}$').hasMatch(scope);
+  }
+
   bool get isEntireField => scope == 'ENTIRE FIELD';
 
   factory RealtimeEvent.fromJson(Map<String, dynamic> json) {
@@ -84,11 +95,13 @@ class RealtimeEvent {
       );
     }
     if (type == RealtimeEventType.measurement ||
-        type == RealtimeEventType.sensorStatus) {
+        type == RealtimeEventType.sensorStatus ||
+        type == RealtimeEventType.nodeStatus ||
+        type == RealtimeEventType.transmissionIntervalUpdated) {
       if (!isMonitoringScope) {
         throw RealtimeValidationException(
-          '${type.name} events require Q1-Q4 monitoring scope.',
-        );
+      '${type.name} events require valid monitoring or node scope.',
+    );
       }
     }
   }
@@ -120,6 +133,15 @@ class RealtimeEvent {
         return RealtimeEventType.controllerEvent;
       case 'alert':
         return RealtimeEventType.alert;
+      case 'node_status':
+      case 'nodeStatus':
+        return RealtimeEventType.nodeStatus;
+      case 'transmission_interval_updated':
+      case 'transmissionIntervalUpdated':
+        return RealtimeEventType.transmissionIntervalUpdated;
+      case 'node_discovered':
+      case 'nodeDiscovered':
+        return RealtimeEventType.nodeDiscovered;
       default:
         throw RealtimeValidationException('Unsupported event type: $value.');
     }

@@ -10,6 +10,7 @@ class ApiRepositoryFactory {
   late final AnalyticsApiService analytics;
   late final AlertApiService alerts;
   late final DeviceApiService devices;
+  late final NodeApiService nodes;
   late final IrrigationApiService irrigation;
 
   ApiRepositoryFactory({
@@ -21,6 +22,7 @@ class ApiRepositoryFactory {
     analytics = AnalyticsApiService(this.client);
     alerts = AlertApiService(this.client);
     devices = DeviceApiService(this.client);
+    nodes = NodeApiService(this.client);
     irrigation = IrrigationApiService(this.client);
   }
 
@@ -29,6 +31,7 @@ class ApiRepositoryFactory {
         analytics: analytics,
         alerts: alerts,
         devices: devices,
+        nodes: nodes,
         irrigation: irrigation,
       );
 

@@ -25,4 +25,16 @@ class ApiZoneRepository implements ZoneRepository {
     final response = await api.getQuarter(code);
     return ApiMappers.monitoringZone(response);
   }
+
+  @override
+  Future<MonitoringZone?> fetchZoneById(
+    String zoneId, {
+    ZoneMockState mockState = ZoneMockState.normal,
+  }) async {
+    final zones = await fetchMonitoringZones(mockState: mockState);
+    for (final z in zones) {
+      if (z.id == zoneId) return z;
+    }
+    return null;
+  }
 }

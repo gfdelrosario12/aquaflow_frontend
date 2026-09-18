@@ -6,6 +6,7 @@ class ApiResourceRepositories {
   final AnalyticsApiService analytics;
   final AlertApiService alerts;
   final DeviceApiService devices;
+  final NodeApiService nodes;
   final IrrigationApiService irrigation;
 
   const ApiResourceRepositories({
@@ -13,6 +14,7 @@ class ApiResourceRepositories {
     required this.analytics,
     required this.alerts,
     required this.devices,
+    required this.nodes,
     required this.irrigation,
   });
 
@@ -27,5 +29,8 @@ class ApiResourceRepositories {
   Future<ResourceListDto> listAlerts() => alerts.listAlerts();
   Future<ResourceListDto> listDevices() => devices.listDevices();
   Future<ResourceDto> getGateway() => devices.gateway();
+  Future<ResourceListDto> listNodes({String? fieldId, String? zoneId}) =>
+      nodes.listNodes(fieldId: fieldId, zoneId: zoneId);
+  Future<ResourceListDto> listDiscoveredNodes() => nodes.listDiscoveredNodes();
   Future<IrrigationResultDto> getIrrigationStatus() => irrigation.status();
 }

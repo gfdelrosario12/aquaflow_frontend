@@ -9,6 +9,10 @@ abstract class ZoneRepository {
     String code, {
     ZoneMockState mockState = ZoneMockState.normal,
   });
+  Future<MonitoringZone?> fetchZoneById(
+    String id, {
+    ZoneMockState mockState = ZoneMockState.normal,
+  });
 }
 
 class ZoneRepositoryImpl implements ZoneRepository {
@@ -30,5 +34,18 @@ class ZoneRepositoryImpl implements ZoneRepository {
     ZoneMockState mockState = ZoneMockState.normal,
   }) {
     return _dataSource.getZoneByCode(code, mockState: mockState);
+  }
+
+  @override
+  Future<MonitoringZone?> fetchZoneById(
+    String id, {
+    ZoneMockState mockState = ZoneMockState.normal,
+  }) async {
+    final zones = await _dataSource.getMonitoringZones(mockState: mockState);
+    try {
+      return zones.firstWhere((z) => z.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 }

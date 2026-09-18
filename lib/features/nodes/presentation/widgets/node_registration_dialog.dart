@@ -1,0 +1,296 @@
+import 'package:flutter/material.dart';
+import '../../../../core/api/api_dtos.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_dimensions.dart';
+import '../../../../core/widgets/aqua_button.dart';
+import '../../domain/models/models.dart';
+
+class NodeRegistrationDialog extends StatefulWidget {
+  final List<NodeDiscoveryInfo> discoveredNodes;
+  final Future<bool> Function(NodeRegistrationRequestDto request) onRegister;
+
+  const NodeRegistrationDialog({
+    super.key,
+    required this.discoveredNodes,
+    required this.onRegister,
+  });
+
+  static Future<bool?> show(
+    BuildContext context, {
+    required List<NodeDiscoveryInfo> discoveredNodes,
+    required Future<bool> Function(NodeRegistrationRequestDto request) onRegister,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => NodeRegistrationDialog(
+        discoveredNodes: discoveredNodes,
+        onRegister: onRegister,
+      ),
+    );
+  }
+
+  @override
+  State<NodeRegistrationDialog> createState() => _NodeRegistrationDialogState();
+}
+
+class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _macController;
+  late final TextEditingController _latController;
+  late final TextEditingController _lngController;
+  late final TextEditingController _localXController;
+  late final TextEditingController _localYController;
+
+  String _selectedZoneId = 'zone-q1';
+  final String _selectedFieldId = 'field-main';
+  int _selectedInterval = 300;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    final first = widget.discoveredNodes.firstOrNull;
+    _macController = TextEditingController(text: first?.macAddress ?? '');
+    _nameController = TextEditingController(
+      text: first != null
+          ? 'ESP32 Node (${first.macAddress.split(':').last})'
+          : '',
+    );
+    _latController = TextEditingController(text: '14.1520');
+    _lngController = TextEditingController(text: '121.2425');
+    _localXController = TextEditingController(text: '50.0');
+    _localYController = TextEditingController(text: '50.0');
+  }
+
+  @override
+  void dispose() {
+    _macController.dispose();
+    _nameController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
+    _localXController.dispose();
+    _localYController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final request = NodeRegistrationRequestDto(
+      macAddress: _macController.text.trim(),
+      displayName: _nameController.text.trim(),
+      fieldId: _selectedFieldId,
+      zoneId: _selectedZoneId,
+      latitude: double.tryParse(_latController.text.trim()),
+      longitude: double.tryParse(_lngController.text.trim()),
+      localX: double.tryParse(_localXController.text.trim()),
+      localY: double.tryParse(_localYController.text.trim()),
+      transmissionIntervalSeconds: _selectedInterval,
+    );
+
+    final success = await widget.onRegister(request);
+    if (!mounted) return;
+
+    if (success) {
+      Navigator.of(context).pop(true);
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Registration failed. Please check parameters.';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
+      ),
+      title: Row(
+        children: [
+          const Icon(Icons.sensors, color: AppColors.primary),
+          const SizedBox(width: AppDimensions.spaceSm),
+          Text(
+            'Register ESP32 Node',
+            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 440,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(AppDimensions.spaceSm),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                    ),
+                  ),
+                  const SizedBox(height: AppDimensions.spaceSm),
+                ],
+
+                // Discovered nodes picker if any
+                if (widget.discoveredNodes.isNotEmpty) ...[
+                  Text(
+                    'Discovered Nearby Nodes:',
+                    style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: widget.discoveredNodes.map((disc) {
+                      final isSelected = _macController.text == disc.macAddress;
+                      return ChoiceChip(
+                        label: Text('${disc.macAddress} (${disc.rssiDbm}dBm)'),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _macController.text = disc.macAddress;
+                              _nameController.text =
+                                  'ESP32 Node (${disc.macAddress.split(':').last})';
+                            });
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: AppDimensions.spaceMd),
+                ],
+
+                // Hardware MAC Address
+                TextFormField(
+                  controller: _macController,
+                  decoration: const InputDecoration(
+                    labelText: 'MAC Address *',
+                    hintText: 'AA:BB:CC:DD:EE:FF',
+                    prefixIcon: Icon(Icons.perm_identity, size: 18),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'MAC Address required' : null,
+                ),
+                const SizedBox(height: AppDimensions.spaceSm),
+
+                // Display Name
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Display Name *',
+                    hintText: 'e.g. Zone 1 North Sensor',
+                    prefixIcon: Icon(Icons.label_outline, size: 18),
+                  ),
+                  validator: (v) =>
+                      (v == null || v.trim().isEmpty) ? 'Display name required' : null,
+                ),
+                const SizedBox(height: AppDimensions.spaceSm),
+
+                // Irrigation Zone Assignment
+                DropdownButtonFormField<String>(
+                  value: _selectedZoneId,
+                  decoration: const InputDecoration(
+                    labelText: 'Assigned Monitoring Zone',
+                    prefixIcon: Icon(Icons.grid_view, size: 18),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'zone-q1', child: Text('Q1 (North-East)')),
+                    DropdownMenuItem(value: 'zone-q2', child: Text('Q2 (North-West)')),
+                    DropdownMenuItem(value: 'zone-q3', child: Text('Q3 (South-East)')),
+                    DropdownMenuItem(value: 'zone-q4', child: Text('Q4 (South-West)')),
+                  ],
+                  onChanged: (v) => setState(() => _selectedZoneId = v ?? 'zone-q1'),
+                ),
+                const SizedBox(height: AppDimensions.spaceMd),
+
+                // Local Cartesian Coordinates (X, Y in meters)
+                Text(
+                  'Local Field Coordinates (Meters):',
+                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _localXController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'X Offset (m)',
+                          hintText: '0.0 - 100.0',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceSm),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _localYController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Y Offset (m)',
+                          hintText: '0.0 - 100.0',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.spaceMd),
+
+                // Base Transmission Interval
+                Text(
+                  'Base Transmission Interval:',
+                  style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  children: [30, 60, 300, 900].map((interval) {
+                    return ChoiceChip(
+                      label: Text(
+                        interval < 60 ? '${interval}s' : '${interval ~/ 60}m',
+                      ),
+                      selected: _selectedInterval == interval,
+                      onSelected: (_) => setState(() => _selectedInterval = interval),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isLoading ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        AquaButton(
+          label: _isLoading ? 'Registering...' : 'Register Node',
+          icon: Icons.check,
+          onPressed: _isLoading ? null : _submit,
+        ),
+      ],
+    );
+  }
+}
+

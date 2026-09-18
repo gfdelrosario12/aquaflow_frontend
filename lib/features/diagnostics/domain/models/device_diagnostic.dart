@@ -25,6 +25,14 @@ class DeviceDiagnostic {
   final String? lastCommandResult;
   final DateTime? lastCommunication;
   final String diagnosticMessage;
+  final String? macAddress;
+  final double? latitude;
+  final double? longitude;
+  final double? localX;
+  final double? localY;
+  final int? transmissionIntervalSeconds;
+  final bool isAdaptiveInterval;
+  final String? adaptiveReason;
 
   const DeviceDiagnostic({
     required this.id,
@@ -50,6 +58,14 @@ class DeviceDiagnostic {
     this.lastCommandResult,
     this.lastCommunication,
     required this.diagnosticMessage,
+    this.macAddress,
+    this.latitude,
+    this.longitude,
+    this.localX,
+    this.localY,
+    this.transmissionIntervalSeconds,
+    this.isAdaptiveInterval = false,
+    this.adaptiveReason,
   });
 
   DeviceDiagnostic copyWith({
@@ -76,6 +92,14 @@ class DeviceDiagnostic {
     String? lastCommandResult,
     DateTime? lastCommunication,
     String? diagnosticMessage,
+    String? macAddress,
+    double? latitude,
+    double? longitude,
+    double? localX,
+    double? localY,
+    int? transmissionIntervalSeconds,
+    bool? isAdaptiveInterval,
+    String? adaptiveReason,
   }) {
     return DeviceDiagnostic(
       id: id ?? this.id,
@@ -101,6 +125,15 @@ class DeviceDiagnostic {
       lastCommandResult: lastCommandResult ?? this.lastCommandResult,
       lastCommunication: lastCommunication ?? this.lastCommunication,
       diagnosticMessage: diagnosticMessage ?? this.diagnosticMessage,
+      macAddress: macAddress ?? this.macAddress,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      localX: localX ?? this.localX,
+      localY: localY ?? this.localY,
+      transmissionIntervalSeconds:
+          transmissionIntervalSeconds ?? this.transmissionIntervalSeconds,
+      isAdaptiveInterval: isAdaptiveInterval ?? this.isAdaptiveInterval,
+      adaptiveReason: adaptiveReason ?? this.adaptiveReason,
     );
   }
 }

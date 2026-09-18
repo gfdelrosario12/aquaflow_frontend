@@ -14,6 +14,7 @@ import 'package:aquaflow_frontend/features/alerts/domain/models/alert_enums.dart
 import 'package:aquaflow_frontend/features/alerts/domain/models/alert_source.dart';
 import 'package:aquaflow_frontend/features/alerts/domain/models/system_alert.dart';
 import 'package:aquaflow_frontend/features/awd/domain/models/awd_analytics_summary.dart';
+import 'package:aquaflow_frontend/features/awd/domain/models/awd_recommendation.dart';
 import 'package:aquaflow_frontend/features/awd/domain/models/awd_threshold_config.dart';
 import 'package:aquaflow_frontend/features/awd/domain/services/awd_rule_engine.dart';
 import 'package:aquaflow_frontend/features/control/domain/models/central_control_telemetry.dart';
@@ -22,6 +23,7 @@ import 'package:aquaflow_frontend/features/diagnostics/domain/models/device_diag
 import 'package:aquaflow_frontend/features/diagnostics/domain/models/diagnostics_enums.dart';
 import 'package:aquaflow_frontend/features/settings/domain/models/settings_models.dart';
 import 'package:aquaflow_frontend/features/zones/domain/models/monitoring_zone.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../support/zone_fixtures.dart';

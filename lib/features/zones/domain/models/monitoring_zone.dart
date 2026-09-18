@@ -1,3 +1,8 @@
+import '../../../nodes/domain/models/esp32_node.dart';
+import '../../../nodes/domain/models/monitoring_point.dart';
+import '../../../nodes/domain/models/spatial_coordinates.dart';
+import '../../../nodes/domain/models/transmission_config.dart';
+
 enum ZoneStatus { optimal, warning, critical, offline }
 enum TrendDirection { wetter, drier, stable }
 
@@ -49,10 +54,15 @@ class ZoneTrendAnalysis {
   }
 }
 
+/// Represents an agronomic or hydrological monitoring zone within a Field.
+///
+/// Strictly observational; does NOT contain independent pump or valve actuation controls.
 class MonitoringZone {
   final String id;
-  final String code; // Q1, Q2, Q3, Q4
+  final String fieldId;
+  final String code; // Dynamic alphanumeric code e.g. "Z1", "Z2", "Q1", "North"
   final String name;
+  final double spatialWeight; // Area weight (0.0 .. 1.0) for field aggregation
   final double soilMoisturePercent;
   final double waterLevelCm;
   final double temperatureCelsius;
@@ -68,11 +78,17 @@ class MonitoringZone {
   final List<double> waterLevelHistory;
   final List<double> waterLevelHistory24h;
   final List<double> waterLevelHistory7d;
+  final List<String> assignedNodeIds;
+  final List<String> monitoringPointIds;
+  final SpatialCoordinates? coordinates;
+  final TransmissionConfig? transmissionConfig;
 
   const MonitoringZone({
     required this.id,
+    this.fieldId = 'field-01',
     required this.code,
     required this.name,
+    this.spatialWeight = 0.25,
     required this.soilMoisturePercent,
     required this.waterLevelCm,
     required this.temperatureCelsius,
@@ -88,7 +104,55 @@ class MonitoringZone {
     this.waterLevelHistory = const [4.5, 4.8, 5.0, 5.2, 5.1],
     this.waterLevelHistory24h = const [4.2, 4.5, 4.8, 5.0, 5.2],
     this.waterLevelHistory7d = const [3.5, 4.0, 4.5, 4.8, 5.2],
+    this.assignedNodeIds = const [],
+    this.monitoringPointIds = const [],
+    this.coordinates,
+    this.transmissionConfig,
   });
+
+  /// Legacy adapter creating a MonitoringZone view from a decoupled MonitoringPoint and its mounted Esp32Node.
+  factory MonitoringZone.fromPointAndNode({
+    required MonitoringPoint point,
+    Esp32Node? node,
+    DateTime? timestamp,
+  }) {
+    final now = timestamp ?? DateTime.now();
+    final isOnline = node?.isOnline ?? false;
+    final waterLevel = node?.waterLevelCm ?? 0.0;
+    final soilMoisture = node?.soilMoisturePercent ?? 0.0;
+
+    ZoneStatus status = ZoneStatus.optimal;
+    if (!isOnline) {
+      status = ZoneStatus.offline;
+    } else if (waterLevel < -10.0 || soilMoisture < 20.0) {
+      status = ZoneStatus.critical;
+    } else if (waterLevel < -5.0 || soilMoisture < 35.0) {
+      status = ZoneStatus.warning;
+    }
+
+    return MonitoringZone(
+      id: point.id,
+      fieldId: point.fieldId,
+      code: point.code,
+      name: point.label,
+      soilMoisturePercent: soilMoisture,
+      waterLevelCm: waterLevel,
+      temperatureCelsius: node?.temperatureCelsius ?? 28.0,
+      humidityPercent: node?.humidityPercent ?? 75.0,
+      batteryPercent: node?.batteryPercent ?? 100,
+      status: status,
+      lastUpdated: node?.lastSeen ?? now,
+      isOnline: isOnline,
+      rssiDbm: node?.rssiDbm ?? -85,
+      snrDb: node?.snrDb ?? 9.0,
+      hardwareModel: node?.hardwareRevision ?? 'AquaSense Node',
+      firmwareVersion: node?.firmwareVersion ?? '1.0.0',
+      assignedNodeIds: node != null ? [node.id] : const [],
+      monitoringPointIds: [point.id],
+      coordinates: point.coordinates ?? node?.coordinates,
+      transmissionConfig: node?.transmissionConfig,
+    );
+  }
 
   ZoneTrendAnalysis get trendAnalysis =>
       ZoneTrendAnalysis.fromHistory(waterLevelHistory);
@@ -98,8 +162,10 @@ class MonitoringZone {
 
   MonitoringZone copyWith({
     String? id,
+    String? fieldId,
     String? code,
     String? name,
+    double? spatialWeight,
     double? soilMoisturePercent,
     double? waterLevelCm,
     double? temperatureCelsius,
@@ -115,11 +181,17 @@ class MonitoringZone {
     List<double>? waterLevelHistory,
     List<double>? waterLevelHistory24h,
     List<double>? waterLevelHistory7d,
+    List<String>? assignedNodeIds,
+    List<String>? monitoringPointIds,
+    SpatialCoordinates? coordinates,
+    TransmissionConfig? transmissionConfig,
   }) {
     return MonitoringZone(
       id: id ?? this.id,
+      fieldId: fieldId ?? this.fieldId,
       code: code ?? this.code,
       name: name ?? this.name,
+      spatialWeight: spatialWeight ?? this.spatialWeight,
       soilMoisturePercent: soilMoisturePercent ?? this.soilMoisturePercent,
       waterLevelCm: waterLevelCm ?? this.waterLevelCm,
       temperatureCelsius: temperatureCelsius ?? this.temperatureCelsius,
@@ -135,6 +207,10 @@ class MonitoringZone {
       waterLevelHistory: waterLevelHistory ?? this.waterLevelHistory,
       waterLevelHistory24h: waterLevelHistory24h ?? this.waterLevelHistory24h,
       waterLevelHistory7d: waterLevelHistory7d ?? this.waterLevelHistory7d,
+      assignedNodeIds: assignedNodeIds ?? this.assignedNodeIds,
+      monitoringPointIds: monitoringPointIds ?? this.monitoringPointIds,
+      coordinates: coordinates ?? this.coordinates,
+      transmissionConfig: transmissionConfig ?? this.transmissionConfig,
     );
   }
 }

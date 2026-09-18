@@ -7,23 +7,30 @@ import '../../../../core/widgets/aqua_chart_container.dart';
 import '../../../../core/widgets/sensor_metric_tile.dart';
 import '../../../../core/widgets/simulated_telemetry_chart.dart';
 import '../../../../core/widgets/status_badge.dart';
+import '../../../nodes/domain/models/models.dart';
 import '../../../zones/domain/models/monitoring_zone.dart';
 import '../../../zones/presentation/zone_analysis_screen.dart';
 
 class ZoneDetailBottomSheet extends StatelessWidget {
   final MonitoringZone zone;
   final VoidCallback? onNavigateToControl;
+  final List<Esp32Node> assignedNodes;
+  final Future<void> Function(Esp32Node node)? onConfigureInterval;
 
   const ZoneDetailBottomSheet({
     super.key,
     required this.zone,
     this.onNavigateToControl,
+    this.assignedNodes = const [],
+    this.onConfigureInterval,
   });
 
   static void show(
     BuildContext context, {
     required MonitoringZone zone,
     VoidCallback? onNavigateToControl,
+    List<Esp32Node> assignedNodes = const [],
+    Future<void> Function(Esp32Node node)? onConfigureInterval,
   }) {
     showModalBottomSheet(
       context: context,
@@ -32,6 +39,8 @@ class ZoneDetailBottomSheet extends StatelessWidget {
       builder: (context) => ZoneDetailBottomSheet(
         zone: zone,
         onNavigateToControl: onNavigateToControl,
+        assignedNodes: assignedNodes,
+        onConfigureInterval: onConfigureInterval,
       ),
     );
   }
@@ -39,6 +48,10 @@ class ZoneDetailBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final transmission = zone.transmissionConfig;
+    final nodeCount =
+        assignedNodes.isNotEmpty ? assignedNodes.length : zone.assignedNodeIds.length;
+    final onlineCount = assignedNodes.where((n) => n.isOnline).length;
 
     return Container(
       decoration: BoxDecoration(
@@ -134,6 +147,93 @@ class ZoneDetailBottomSheet extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppDimensions.spaceMd),
+
+            if (nodeCount > 0) ...[
+              Text(
+                'Assigned Nodes ($nodeCount${assignedNodes.isNotEmpty ? ', $onlineCount online' : ''})',
+                style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: AppDimensions.spaceXs),
+              Wrap(
+                spacing: AppDimensions.spaceXs,
+                runSpacing: AppDimensions.spaceXs,
+                children: [
+                  if (assignedNodes.isNotEmpty)
+                    ...assignedNodes.map(
+                      (node) => Chip(
+                        avatar: Icon(
+                          node.isOnline ? Icons.sensors : Icons.sensors_off,
+                          size: 16,
+                          color: node.isOnline ? AppColors.success : AppColors.error,
+                        ),
+                        label: Text(node.displayName, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
+                  else
+                    ...zone.assignedNodeIds.map((id) => Chip(label: Text(id))),
+                ],
+              ),
+              const SizedBox(height: AppDimensions.spaceMd),
+            ],
+
+            // Spatial Coordinates & Transmission Interval
+            if (zone.coordinates != null || transmission != null) ...[
+              Row(
+                children: [
+                  if (zone.coordinates?.hasAnyCoordinates == true) ...[
+                    Expanded(
+                      child: Text(
+                        zone.coordinates?.hasLocalCoordinates == true
+                            ? 'Local: X ${zone.coordinates!.localX!.toStringAsFixed(1)}m, Y ${zone.coordinates!.localY!.toStringAsFixed(1)}m'
+                            : 'GPS: ${zone.coordinates!.latitude!.toStringAsFixed(4)}, ${zone.coordinates!.longitude!.toStringAsFixed(4)}',
+                        style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                  if (transmission != null) ...[
+                    const SizedBox(width: AppDimensions.spaceSm),
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Icon(
+                            transmission.isAdaptive ? Icons.bolt : Icons.timer,
+                            size: 12,
+                            color: transmission.isAdaptive
+                                ? AppColors.accent
+                                : AppColors.primary,
+                          ),
+                          const SizedBox(width: 2),
+                          Flexible(
+                            child: Text(
+                              'Interval: ${transmission.intervalSeconds}s ${transmission.isAdaptive ? '(Adaptive)' : '(Fixed)'}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: transmission.isAdaptive
+                                    ? AppColors.accent
+                                    : AppColors.primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              if (onConfigureInterval != null && assignedNodes.isNotEmpty) ...[
+                const SizedBox(height: AppDimensions.spaceSm),
+                AquaButton(
+                  label: 'Configure Transmission Interval',
+                  icon: Icons.timer_outlined,
+                  variant: AquaButtonVariant.outline,
+                  isFullWidth: true,
+                  onPressed: () => onConfigureInterval!(assignedNodes.first),
+                ),
+              ],
+              const SizedBox(height: AppDimensions.spaceSm),
+            ],
 
             // LoRaWAN & Hardware Diagnostics
             Text(

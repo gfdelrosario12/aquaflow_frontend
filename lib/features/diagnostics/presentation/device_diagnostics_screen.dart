@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_dtos.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../control/domain/models/control_enums.dart';
+import '../../nodes/data/repositories/node_repository.dart';
+import '../../nodes/domain/models/models.dart';
+import '../../nodes/presentation/widgets/node_registration_dialog.dart';
 import '../domain/models/models.dart';
 import 'providers/diagnostics_provider.dart';
 import 'widgets/device_detail_dialog.dart';
 
 class DeviceDiagnosticsScreen extends StatefulWidget {
   final DiagnosticsNotifier? notifier;
+  final NodeRepository? nodeRepository;
 
-  const DeviceDiagnosticsScreen({super.key, this.notifier});
+  const DeviceDiagnosticsScreen({
+    super.key,
+    this.notifier,
+    this.nodeRepository,
+  });
 
   @override
   State<DeviceDiagnosticsScreen> createState() => _DeviceDiagnosticsScreenState();
@@ -17,18 +27,51 @@ class DeviceDiagnosticsScreen extends StatefulWidget {
 
 class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
   late DiagnosticsNotifier _notifier;
+  late final NodeRepository _nodeRepository;
+  List<NodeDiscoveryInfo> _discoveredNodes = [];
 
   @override
   void initState() {
     super.initState();
     _notifier = widget.notifier ?? DiagnosticsNotifier();
+    _nodeRepository = widget.nodeRepository ?? MockNodeRepository();
     _notifier.addListener(_onStateChanged);
+    _loadDiscoveredNodes();
+  }
+
+  Future<void> _loadDiscoveredNodes() async {
+    try {
+      final disc = await _nodeRepository.fetchDiscoveredNodes();
+      if (mounted) setState(() => _discoveredNodes = disc);
+    } catch (_) {}
   }
 
   void _onStateChanged() {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  Future<void> _openNodeRegistration() async {
+    await NodeRegistrationDialog.show(
+      context,
+      discoveredNodes: _discoveredNodes,
+      onRegister: (request) async {
+        try {
+          final registered = await _nodeRepository.registerNode(request);
+          _notifier.fetchDiagnostics();
+          _loadDiscoveredNodes();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Registered node ${registered.displayName}')),
+            );
+          }
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
+    );
   }
 
   @override
@@ -50,8 +93,16 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
         title: const Text('Device Diagnostics'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: 'Register ESP32 Node',
+            onPressed: _openNodeRegistration,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => _notifier.fetchDiagnostics(),
+            onPressed: () {
+              _notifier.fetchDiagnostics();
+              _loadDiscoveredNodes();
+            },
             tooltip: 'Refresh Diagnostics',
           ),
         ],
@@ -252,7 +303,29 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
       margin: const EdgeInsets.only(bottom: AppDimensions.spaceSm),
       child: AquaCard(
         child: InkWell(
-          onTap: () => DeviceDetailDialog.show(context, device),
+          onTap: () => DeviceDetailDialog.show(
+            context,
+            device,
+            userRole: ControlUserRole.operator,
+            onConfigureInterval: device.category == DeviceCategory.sensorNode
+                ? (interval, {bool isAdaptive = false, String? reason}) async {
+                    try {
+                      await _nodeRepository.configureTransmissionInterval(
+                        device.id,
+                        TransmissionConfigDto(
+                          intervalSeconds: interval,
+                          isAdaptive: isAdaptive,
+                          reason: reason,
+                        ),
+                      );
+                      await _notifier.fetchDiagnostics();
+                      return true;
+                    } catch (_) {
+                      return false;
+                    }
+                  }
+                : null,
+          ),
           child: Padding(
             padding: const EdgeInsets.all(4.0),
             child: Column(
@@ -303,6 +376,24 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
                         ),
                       ),
                     ),
+                    if (device.transmissionIntervalSeconds != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: device.isAdaptiveInterval
+                              ? AppColors.accent.withValues(alpha: 0.15)
+                              : AppColors.primaryLight.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'INTERVAL: ${device.transmissionIntervalSeconds}s${device.isAdaptiveInterval ? ' (ADAPTIVE)' : ''}',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: device.isAdaptiveInterval ? AppColors.accent : AppColors.primary,
+                          ),
+                        ),
+                      ),
                     if (device.batteryPercent != null)
                       Text(
                         'Battery: ${device.batteryPercent}%',
@@ -335,6 +426,24 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
         _metricTile('Communication', device.communicationStatus ?? 'Telemetry link'),
         _metricTile('Measurement', device.lastMeasurement ?? 'No measurement'),
       ]));
+      if (device.transmissionIntervalSeconds != null) {
+        rows.add(_buildMetricRow([
+          _metricTile(
+            'Interval',
+            '${device.transmissionIntervalSeconds}s${device.isAdaptiveInterval ? " (Adaptive)" : ""}',
+            Icons.timer_outlined,
+          ),
+          _metricTile(
+            'Coordinates',
+            device.latitude != null && device.longitude != null
+                ? '${device.latitude!.toStringAsFixed(4)}, ${device.longitude!.toStringAsFixed(4)}'
+                : (device.localX != null && device.localY != null
+                    ? '(${device.localX!.toStringAsFixed(1)}m, ${device.localY!.toStringAsFixed(1)}m)'
+                    : 'Unassigned'),
+            Icons.location_on_outlined,
+          ),
+        ]));
+      }
     } else if (device.category == DeviceCategory.gateway) {
       rows.add(_buildMetricRow([
         _metricTile('Connectivity', device.communicationStatus ?? (device.isOnline ? 'Connected' : 'Offline'), Icons.wifi),

@@ -32,6 +32,12 @@ class ActiveAlertsSection extends StatelessWidget {
               'Active Field Alerts (${alerts.length})',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
+            Expanded(
+              child: Text(
+                'Active Field Alerts (${alerts.length})',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

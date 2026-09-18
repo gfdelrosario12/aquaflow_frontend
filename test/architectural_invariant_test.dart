@@ -4,10 +4,11 @@ import 'package:aquaflow_frontend/features/awd/presentation/awd_analytics_screen
 import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
 import 'package:aquaflow_frontend/features/control/domain/models/models.dart';
 import 'package:aquaflow_frontend/features/field/presentation/field_screen.dart';
-import 'package:aquaflow_frontend/features/zones/data/repositories/zone_repository.dart';
 import 'package:aquaflow_frontend/features/zones/presentation/zone_analysis_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/zone_fixtures.dart';
 
 void main() {
   final forbiddenActuatorLabels = [
@@ -35,7 +36,7 @@ void main() {
     });
 
     testWidgets('ZoneAnalysisScreen is read-only for each quadrant', (tester) async {
-      final zones = await ZoneRepositoryImpl().fetchMonitoringZones();
+      final zones = sampleFieldZones();
       expect(zones.length, greaterThanOrEqualTo(4));
 
       for (final zone in zones.take(4)) {
@@ -48,6 +49,8 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
 
         for (final label in forbiddenActuatorLabels) {
           expect(find.text(label), findsNothing, reason: '${zone.code} showed $label');

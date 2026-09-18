@@ -117,6 +117,12 @@ class QuadrantGridVisualizer extends StatelessWidget {
                 ],
               ),
               StatusBadge.zoneStatus(zone.status.name, compact: true),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: StatusBadge.zoneStatus(zone.status.name, compact: true),
+                ),
+              ),
             ],
           ),
           Column(

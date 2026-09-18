@@ -56,6 +56,21 @@ class ApiClient {
     );
   }
 
+  Future<Object?> put(
+    String path, {
+    Map<String, Object?>? body,
+    bool authorized = true,
+    bool retryable = false,
+  }) {
+    return request(
+      'PUT',
+      path,
+      body: body,
+      authorized: authorized,
+      retryable: retryable,
+    );
+  }
+
   Future<Object?> request(
     String method,
     String path, {

@@ -50,6 +50,14 @@ class ApiDiagnosticsRepository implements DiagnosticsRepository {
       lastCommandResult: data['lastCommandResult']?.toString(),
       lastCommunication: DateTime.tryParse(data['lastCommunication']?.toString() ?? ''),
       diagnosticMessage: data['diagnosticMessage']?.toString() ?? 'No diagnostic message.',
+      macAddress: data['macAddress']?.toString(),
+      latitude: _doubleNullable(data['latitude']),
+      longitude: _doubleNullable(data['longitude']),
+      localX: _doubleNullable(data['localX']),
+      localY: _doubleNullable(data['localY']),
+      transmissionIntervalSeconds: _intNullable(data['transmissionIntervalSeconds']),
+      isAdaptiveInterval: data['isAdaptiveInterval'] as bool? ?? data['isAdaptive'] as bool? ?? false,
+      adaptiveReason: data['adaptiveReason']?.toString(),
     );
   }
 
