@@ -94,3 +94,34 @@ The system SHALL map HTTP 403 Forbidden responses for sensitive operations into 
 #### Scenario: Forbidden irrigation response
 - **WHEN** an irrigation command API call returns 403
 - **THEN** the service returns a typed authorization failure and does not retry the command.
+
+### Requirement: Sensor node lifecycle REST service and endpoint coverage
+The system SHALL provide dedicated REST service client endpoints and typed DTO serialization for dynamic sensor node lifecycle management, covering node listing (`GET /api/nodes`), unassigned discovery (`GET /api/nodes/unassigned`), registration (`POST /api/nodes/register`), provisioning (`POST /api/nodes/{id}/provision`), metadata and interval updates (`PATCH /api/nodes/{id}`), lifecycle transitions (`POST /api/nodes/{id}/lifecycle`), atomic node replacement (`POST /api/nodes/{id}/replace`), and decommissioning (`DELETE /api/nodes/{id}`).
+
+#### Scenario: Repository executes node lifecycle REST operations
+- **WHEN** the node repository initiates a registration, provisioning, lifecycle transition, or replacement call
+- **THEN** the API service serializes typed DTO requests, attaches authorization headers, sends the request to the corresponding node endpoint, and maps response payloads to typed node models or typed failures.
+
+#### Scenario: Node replacement endpoint preserves zone telemetry continuity
+- **WHEN** the replacement endpoint `POST /api/nodes/{id}/replace` is called with replacement node ID and target zone ID
+- **THEN** the backend updates the node mappings, emits replacement events, and returns the updated zone and node representations with historical measurement continuity verified.
+
+
+### Requirement: Automatic irrigation configuration and audit trail API endpoints
+The system SHALL provide REST API service endpoints and DTO mappings for automated irrigation management, including `/api/irrigation/auto-config` (GET, PUT), `/api/irrigation/auto-state` (GET), `/api/irrigation/auto-lockout/clear` (POST), and `/api/irrigation/audit-log` (GET). All audit log entries MUST include typed actor metadata (`actorType: system | user`, `actorId: String`).
+
+#### Scenario: Fetching automatic irrigation configuration
+- **WHEN** the application loads the automatic irrigation settings interface
+- **THEN** it issues a GET request to `/api/irrigation/auto-config` and decodes the response into an `AutoIrrigationConfig` domain model.
+
+#### Scenario: Updating automatic irrigation configuration
+- **WHEN** an authorized operator modifies the automatic mode toggle or safety parameters
+- **THEN** the application issues a PUT request to `/api/irrigation/auto-config` with validated payload and updates the active configuration.
+
+#### Scenario: Fetching irrigation execution audit log
+- **WHEN** the user views the irrigation history on the Control or Analytics screen
+- **THEN** the system fetches `/api/irrigation/audit-log` and presents entries distinguishing automated cycles (`system/auto-awd`) from manual operator triggers (`user/<id>`).
+
+#### Scenario: Clearing a fault lockout
+- **WHEN** an authorized operator clears a fault lockout on the Control screen
+- **THEN** the application dispatches a POST request to `/api/irrigation/auto-lockout/clear` with an optional resolution note, receiving the restored `standby` state.

@@ -29,6 +29,7 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
   late DiagnosticsNotifier _notifier;
   late final NodeRepository _nodeRepository;
   List<NodeDiscoveryInfo> _discoveredNodes = [];
+  List<Esp32Node> _allNodes = [];
 
   @override
   void initState() {
@@ -42,7 +43,13 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
   Future<void> _loadDiscoveredNodes() async {
     try {
       final disc = await _nodeRepository.fetchDiscoveredNodes();
-      if (mounted) setState(() => _discoveredNodes = disc);
+      final nodes = await _nodeRepository.fetchNodes();
+      if (mounted) {
+        setState(() {
+          _discoveredNodes = disc;
+          _allNodes = nodes;
+        });
+      }
     } catch (_) {}
   }
 
@@ -149,7 +156,7 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
                             ),
                             const SizedBox(width: 6),
                             ChoiceChip(
-                              label: const Text('Nodes (Q1–Q4)'),
+                              label: Text('Nodes (${state.sensorNodes.length})'),
                               selected: state.categoryFilter == DeviceCategory.sensorNode,
                               onSelected: (sel) => _notifier.setCategoryFilter(sel ? DeviceCategory.sensorNode : null),
                             ),
@@ -172,7 +179,7 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
 
                       // Monitoring Nodes Section
                       if (state.categoryFilter == null || state.categoryFilter == DeviceCategory.sensorNode) ...[
-                        _buildSectionHeader('Quadrant Telemetry Nodes (Q1–Q4)', 'Read-Only Monitoring Nodes'),
+                        _buildSectionHeader('Sensor Telemetry Nodes (${state.sensorNodes.length})', 'Read-Only Monitoring Nodes'),
                         const SizedBox(height: AppDimensions.spaceSm),
                         ...state.sensorNodes.map((node) => _buildDeviceCard(node)),
                         const SizedBox(height: AppDimensions.spaceMd),
@@ -307,6 +314,11 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
             context,
             device,
             userRole: ControlUserRole.operator,
+            availableReplacementNodes: _allNodes
+                .where((n) =>
+                    n.id != device.id &&
+                    n.lifecycleState != NodeLifecycleStatus.decommissioned)
+                .toList(),
             onConfigureInterval: device.category == DeviceCategory.sensorNode
                 ? (interval, {bool isAdaptive = false, String? reason}) async {
                     try {
@@ -321,6 +333,73 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
                       await _notifier.fetchDiagnostics();
                       return true;
                     } catch (_) {
+                      return false;
+                    }
+                  }
+                : null,
+            onReplaceNode: device.category == DeviceCategory.sensorNode
+                ? (req) async {
+                    try {
+                      final result =
+                          await _nodeRepository.executeNodeReplacement(
+                        oldNodeId: device.id,
+                        replacementNodeId: req.replacementNodeId,
+                        reason: req.reason,
+                        transferCalibration: req.transferCalibration,
+                      );
+                      await _notifier.fetchDiagnostics();
+                      await _loadDiscoveredNodes();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Successfully replaced node ${result.replacedNodeId} with ${result.replacementNodeId}',
+                            ),
+                          ),
+                        );
+                      }
+                      return result;
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to replace node: $e'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
+                      return null;
+                    }
+                  }
+                : null,
+            onTransitionLifecycle: device.category == DeviceCategory.sensorNode
+                ? (targetStatus) async {
+                    try {
+                      await _nodeRepository.transitionLifecycle(
+                        nodeId: device.id,
+                        targetStatus: targetStatus,
+                      );
+                      await _notifier.fetchDiagnostics();
+                      await _loadDiscoveredNodes();
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Updated ${device.name} status to ${targetStatus.name}',
+                            ),
+                          ),
+                        );
+                      }
+                      return true;
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to update status: $e'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                      }
                       return false;
                     }
                   }

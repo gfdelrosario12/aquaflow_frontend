@@ -1,3 +1,5 @@
+import '../../../awd/domain/models/awd_automation_eligibility.dart';
+import '../../../awd/domain/models/awd_confidence.dart';
 import '../../../irrigation/domain/models/centralized_irrigation.dart';
 import '../../../zones/domain/models/monitoring_zone.dart';
 import 'field_alert.dart';
@@ -20,6 +22,8 @@ class FieldDashboardSummary {
   final List<FieldAlert> activeAlerts;
   final List<FieldRecommendation> recommendations;
   final bool forceStale;
+  final AwdConfidence? confidence;
+  final AwdAutomationEligibility? autoEligibility;
 
   const FieldDashboardSummary({
     required this.overallCondition,
@@ -36,6 +40,8 @@ class FieldDashboardSummary {
     required this.activeAlerts,
     required this.recommendations,
     this.forceStale = false,
+    this.confidence,
+    this.autoEligibility,
   });
 
   bool get isStale =>

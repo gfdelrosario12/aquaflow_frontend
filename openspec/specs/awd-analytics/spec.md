@@ -3,36 +3,46 @@
 ## Purpose
 
 Provides field-wide Alternate Wetting and Drying (AWD) analytics, multi-zone telemetry aggregation (Q1–Q4), wetting and drying rate trend calculations, configurable threshold evaluation, and centralized irrigation decision rationale.
-
 ## Requirements
-
 ### Requirement: Aggregated field-wide AWD water condition assessment
-The system SHALL aggregate water depth and soil moisture readings from monitoring zones Q1, Q2, Q3, and Q4 to compute a unified field-wide AWD water level status (Safe Dry, Reflood Needed, Flooded, or Critical Dryness) and field average water depth.
+The system SHALL aggregate water depth and soil moisture readings from all active reporting monitoring zones in the field to compute a unified field-wide AWD water level status (Safe Dry, Reflood Needed, Flooded, or Critical Dryness), field weighted-average water depth, and moisture range across arbitrary zone counts (1, 2, 4, 6, 8, or more), accounting for spatial weighting and excluding filtered outliers.
 
 #### Scenario: Viewing field-wide AWD status summary
 - **WHEN** the user opens the AWD Analytics screen
-- **THEN** the system displays the aggregated field water status, average field water depth, and moisture range across Q1–Q4.
+- **THEN** the system displays the aggregated field water status, spatially weighted average field water depth, active node count, and moisture range calculated from all usable reporting monitoring zones.
+
+#### Scenario: Aggregating single-zone and multi-zone fields
+- **WHEN** a field contains 1, 2, 6, or 8 active monitoring zones
+- **THEN** the rule engine evaluates the aggregated water condition without requiring a fixed 4-zone topology.
 
 ### Requirement: Multi-zone drying and wetting trend evaluation
-The system SHALL compute and display drying and wetting rate trends (cm/day or cm/h) across Q1, Q2, Q3, and Q4, allowing users to compare localized drying rates and identify rapid water depletion or accumulation zones.
+The system SHALL compute and display drying and wetting rate trends (cm/day or cm/h) across all configured field monitoring zones, allowing users to compare localized drying rates and identify rapid water depletion or accumulation areas.
 
 #### Scenario: Inspecting zone drying and wetting trend rates
 - **WHEN** the user views the zone trend comparison section of the AWD Analytics screen
-- **THEN** the system presents drying and wetting rates for Q1–Q4 with visual indicators identifying which quadrants are drying fastest or absorbing water.
+- **THEN** the system presents drying and wetting rates for all configured field zones with visual indicators identifying which zones are drying fastest or accumulating water.
 
 ### Requirement: Configurable AWD threshold rules engine
-The system SHALL support configurable AWD rule parameters (including safe drying depth limit, reflood threshold, and target flood depth) rather than hardcoding static scientifically unvalidated constants, allowing project-specific threshold configurations to be supplied dynamically.
+The system SHALL support configurable AWD rule parameters including crop growth stage presets (vegetative, reproductive, ripening), safe drying depth limit, reflood trigger threshold, target flood depth, critical dryness threshold, maximum allowable water depth spread, telemetry freshness timeout, and minimum usable node quorum percentage rather than hardcoding static constants.
+
+#### Scenario: Applying crop stage specific AWD threshold configurations
+- **WHEN** the crop stage is set to reproductive (flowering/heading)
+- **THEN** the rule engine applies stricter safe drying limits (e.g. avoiding negative water depth during panicle initiation) to prevent crop yield loss.
 
 #### Scenario: Applying configured AWD threshold rules
 - **WHEN** the system evaluates field telemetry against the active AWD threshold configuration
-- **THEN** field status and irrigation recommendations are computed dynamically relative to the configured threshold parameters.
+- **THEN** field status and irrigation recommendations are computed dynamically relative to the configured threshold parameters and crop stage.
 
 ### Requirement: Transparent irrigation recommendation rationale
-The system SHALL generate human-readable explanations detailing the precise rationale for recommending or not recommending centralized field irrigation (e.g., stating which zones have crossed the reflood threshold and how far the field average is from safe drying limits).
+The system SHALL generate human-readable explanations detailing the precise rationale for recommending or not recommending centralized field irrigation, explicitly detailing the calculated confidence score, usable vs expected node count, specific zones crossing thresholds, and whether conflicting moisture conditions require physical inspection.
 
 #### Scenario: Inspecting irrigation recommendation rationale
 - **WHEN** the user views the field irrigation recommendation card on the AWD Analytics screen
-- **THEN** a clear rationale statement is rendered explaining why centralized irrigation should or should not be activated.
+- **THEN** a clear rationale statement is rendered explaining why centralized irrigation should or should not be activated, citing specific zone metrics, confidence level, and dry-zone codes.
+
+#### Scenario: Conflicting water levels detected across zones
+- **WHEN** one or more zones are below the reflood trigger while other zones remain flooded above the threshold spread
+- **THEN** the recommendation highlights the variance conflict and recommends physical field inspection or pulsed distribution rather than an unverified full-field flooding.
 
 ### Requirement: Single centralized field irrigation decision support
 The system MUST direct all AWD irrigation recommendations exclusively toward the single centralized field irrigation system, strictly excluding any quadrant-level or zone-specific pump or valve trigger actions.
@@ -42,9 +52,57 @@ The system MUST direct all AWD irrigation recommendations exclusively toward the
 - **THEN** the recommendation applies solely to the centralized irrigation system serving the entire field, and no zone-level control actions are displayed.
 
 ### Requirement: Robust AWD Analytics state management
-The system SHALL handle loading, insufficient data (fewer than 4 active monitoring zones reporting), stale data (outdated telemetry timestamps), and gateway error states using standardized design system widgets.
+The system SHALL handle loading, insufficient data (when zero active monitoring zones report valid telemetry or active node count is below the minimum usable threshold), low confidence / unreliable data (when stale readings or high outlier rates degrade decision quality), and gateway error states using standardized design system widgets.
 
 #### Scenario: Handling insufficient monitoring data for AWD analytics
-- **WHEN** fewer than 4 active monitoring zones report valid telemetry
-- **THEN** an insufficient-data state card is displayed informing the user that complete Q1–Q4 telemetry is required for reliable field-level AWD recommendations.
+- **WHEN** zero active monitoring zones report valid telemetry or active usable nodes are below quorum
+- **THEN** an insufficient-data state card is displayed informing the user that minimum usable monitoring telemetry is required for field-level AWD recommendations.
 
+#### Scenario: Handling low confidence or unreliable telemetry
+- **WHEN** the calculated AWD confidence score falls below the acceptable reliability threshold due to stale or outlier readings
+- **THEN** the system displays an unreliable-data advisory warning alongside tentative metrics, advising caution before irrigating.
+
+### Requirement: Telemetry data quality and outlier filtering
+The system SHALL evaluate incoming water depth and soil moisture measurements for physical plausibility and statistical deviation, flagging or excluding anomalous readings (e.g. values exceeding sensor physical limits or extreme sudden steps) from the field-level AWD aggregation while retaining them in diagnostic logs.
+
+#### Scenario: Filtering sensor outlier spike
+- **WHEN** a sensor node reports an erratic reading (+150 cm water depth in a shallow paddy) while surrounding nodes report 2 cm to 4 cm
+- **THEN** the system flags the anomalous reading as an outlier, excludes it from the field weighted average, and notes the excluded node in the analysis diagnostics.
+
+### Requirement: AWD analysis confidence and data completeness scoring
+The system SHALL compute an explicit field-level AWD confidence score (High, Medium, Low, or Insufficient) based on active node ratio (active nodes / expected nodes), spatial coverage balance, and telemetry freshness (age of last received measurements).
+
+#### Scenario: High confidence rating with complete telemetry
+- **WHEN** all expected monitoring zones report fresh measurements within the freshness timeout and zero outliers are detected
+- **THEN** the AWD confidence score evaluates to High (>=85%) and recommendations are marked with high reliability.
+
+#### Scenario: Degraded confidence due to offline nodes or stale telemetry
+- **WHEN** half of the configured monitoring zones are offline or reporting stale measurements
+- **THEN** the AWD confidence score evaluates to Medium or Low, and the irrigation recommendation card displays a prominent telemetry warning chip.
+
+### Requirement: Conflicting field condition detection and alert generation
+The system SHALL detect severe water depth disparity across monitoring zones where the difference between the highest and lowest water depths exceeds a configurable spread threshold, generating an advisory alert for field level unevenness or soil percolation issues.
+
+#### Scenario: Uneven field depth disparity alert
+- **WHEN** Zone 1 reports -12 cm (severe drying) while Zone 4 reports +6 cm (flooded), exceeding the configured maximum spread threshold
+- **THEN** the system flags a "High Zone Disparity" condition and advises operators to check field leveling, bund integrity, or inlet distribution before executing centralized pumping.
+
+
+### Requirement: Automated irrigation decision eligibility and safety inhibition evaluation
+The AWD Analytics engine SHALL evaluate automated irrigation trigger eligibility, computing a binary decision flag (`isEligibleForAutoIrrigation`), an estimated irrigation runtime duration (in minutes) based on field water deficit and pump capacity, and explicit inhibition codes (`disparityConflict`, `lowConfidence`, `staleTelemetry`, `criticalOutliers`, `cropStageTerminalDrainage`) to protect the field against unintended autonomous pumping.
+
+#### Scenario: Evaluating automated irrigation eligibility for optimal reflood
+- **WHEN** field water depth reaches or drops below the reflood trigger threshold, telemetry confidence is High or Moderate, no conflicting zone spread is detected, and data is fresh
+- **THEN** `isEligibleForAutoIrrigation` is set to `true`, inhibition codes are empty, and estimated runtime duration is calculated.
+
+#### Scenario: Inhibiting automated irrigation due to high zone disparity
+- **WHEN** one or more zones are below reflood threshold but other zones remain flooded above the maximum allowed spread
+- **THEN** `isEligibleForAutoIrrigation` is set to `false`, inhibition codes include `disparityConflict`, and the recommendation rationale explicitly notes that automated irrigation is inhibited pending physical inspection.
+
+#### Scenario: Inhibiting automated irrigation due to degraded or stale telemetry
+- **WHEN** telemetry confidence is Low or Insufficient, or data age exceeds the freshness timeout
+- **THEN** `isEligibleForAutoIrrigation` is set to `false`, inhibition codes include `lowConfidence` or `staleTelemetry`, and automated pumping is blocked.
+
+#### Scenario: Calculating estimated run duration for automated reflood
+- **WHEN** automated irrigation is eligible and target flood depth is configured to $+5.0\text{ cm}$
+- **THEN** the system calculates runtime duration proportional to water deficit $(+5.0\text{ cm} - \text{averageDepth})$, bounded by the maximum safety ceiling duration (default 45 minutes).

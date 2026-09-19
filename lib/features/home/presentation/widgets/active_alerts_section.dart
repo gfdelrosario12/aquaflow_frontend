@@ -28,10 +28,6 @@ class ActiveAlertsSection extends StatelessWidget {
               color: AppColors.warning,
             ),
             const SizedBox(width: AppDimensions.spaceSm),
-            Text(
-              'Active Field Alerts (${alerts.length})',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
             Expanded(
               child: Text(
                 'Active Field Alerts (${alerts.length})',

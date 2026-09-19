@@ -72,6 +72,29 @@ class SpatialFieldNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Updates selection and hover references when a node is replaced.
+  void handleNodeReplaced(String oldNodeId, String newNodeId) {
+    var changed = false;
+    var nextSelected = _state.selectedNodeId;
+    var nextHovered = _state.hoveredNodeId;
+
+    if (_state.selectedNodeId == oldNodeId) {
+      nextSelected = newNodeId;
+      changed = true;
+    }
+    if (_state.hoveredNodeId == oldNodeId) {
+      nextHovered = newNodeId;
+      changed = true;
+    }
+    if (changed) {
+      _state = _state.copyWith(
+        selectedNodeId: nextSelected,
+        hoveredNodeId: nextHovered,
+      );
+      notifyListeners();
+    }
+  }
+
   void toggleGridLines() {
     _state = _state.copyWith(showGridLines: !_state.showGridLines);
     notifyListeners();

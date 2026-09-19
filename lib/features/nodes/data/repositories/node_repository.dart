@@ -33,6 +33,38 @@ abstract class NodeRepository {
     required String newNodeId,
   });
 
+  /// Transition lifecycle status of a node with transition validation
+  Future<Esp32Node> transitionLifecycle({
+    required String nodeId,
+    required NodeLifecycleStatus targetStatus,
+    String? reason,
+    String? notes,
+  });
+
+  /// Replace an existing node with a new node atomically with audit preservation
+  Future<NodeReplacementResult> executeNodeReplacement({
+    required String oldNodeId,
+    required String replacementNodeId,
+    String? reason,
+    bool transferCalibration = true,
+  });
+
+  /// Provision a discovered node with credentials and spatial binding
+  Future<Esp32Node> provisionNode({
+    required String nodeId,
+    required NodeProvisioningRequestDto request,
+  });
+
+  /// Decommission a node permanently
+  Future<bool> decommissionNode(String nodeId);
+
+  /// Update mutable metadata (e.g. rename displayName or coordinates)
+  Future<Esp32Node> updateNodeMetadata({
+    required String nodeId,
+    String? displayName,
+    SpatialCoordinates? coordinates,
+  });
+
   /// Stream of node list updates
   Stream<List<Esp32Node>> watchNodes();
 }
@@ -309,31 +341,166 @@ class MockNodeRepository implements NodeRepository {
   }
 
   @override
-  Future<Esp32Node> replaceNode({
+  Future<Esp32Node> transitionLifecycle({
+    required String nodeId,
+    required NodeLifecycleStatus targetStatus,
+    String? reason,
+    String? notes,
+  }) async {
+    final idx = _nodes.indexWhere((n) => n.id == nodeId);
+    if (idx == -1) {
+      throw Exception('Node $nodeId not found.');
+    }
+    final current = _nodes[idx];
+    if (!current.lifecycleState.canTransitionTo(targetStatus)) {
+      throw StateError(
+        'Invalid lifecycle transition from ${current.lifecycleState.name} to ${targetStatus.name}.',
+      );
+    }
+
+    final updated = current.copyWith(
+      lifecycleState: targetStatus,
+      assignedZoneId: targetStatus == NodeLifecycleStatus.decommissioned
+          ? null
+          : current.assignedZoneId,
+      assignedPointId: targetStatus == NodeLifecycleStatus.decommissioned
+          ? null
+          : current.assignedPointId,
+    );
+    _nodes[idx] = updated;
+    _controller.add(List.unmodifiable(_nodes));
+    return updated;
+  }
+
+  @override
+  Future<NodeReplacementResult> executeNodeReplacement({
     required String oldNodeId,
-    required String newNodeId,
+    required String replacementNodeId,
+    String? reason,
+    bool transferCalibration = true,
   }) async {
     final oldIdx = _nodes.indexWhere((n) => n.id == oldNodeId);
-    final newIdx = _nodes.indexWhere((n) => n.id == newNodeId);
+    final newIdx = _nodes.indexWhere((n) => n.id == replacementNodeId);
     if (oldIdx == -1 || newIdx == -1) {
       throw Exception('Node not found for replacement.');
     }
     final oldNode = _nodes[oldIdx];
     final newNode = _nodes[newIdx];
+    final now = DateTime.now();
 
-    _nodes[oldIdx] = oldNode.copyWith(
+    final retiredOldNode = oldNode.copyWith(
       assignedPointId: null,
-      lifecycleState: NodeLifecycleState.replaced,
+      lifecycleState: NodeLifecycleStatus.replaced,
+      replacedByNodeId: newNode.id,
+      replacedAt: now,
+      isOnline: false,
     );
-    _nodes[newIdx] = newNode.copyWith(
+    final activatedNewNode = newNode.copyWith(
       assignedFieldId: oldNode.assignedFieldId,
       assignedZoneId: oldNode.assignedZoneId,
       assignedPointId: oldNode.assignedPointId,
       coordinates: oldNode.coordinates,
-      lifecycleState: NodeLifecycleState.active,
+      lifecycleState: NodeLifecycleStatus.active,
+      replacesNodeId: oldNode.id,
+      isOnline: true,
+      soilMoisturePercent: oldNode.soilMoisturePercent,
+      waterLevelCm: oldNode.waterLevelCm,
+      temperatureCelsius: oldNode.temperatureCelsius,
+      humidityPercent: oldNode.humidityPercent,
+    );
+
+    _nodes[oldIdx] = retiredOldNode;
+    _nodes[newIdx] = activatedNewNode;
+    _controller.add(List.unmodifiable(_nodes));
+
+    return NodeReplacementResult(
+      oldNodeId: oldNode.id,
+      replacementNodeId: newNode.id,
+      fieldId: oldNode.assignedFieldId ?? 'field-main',
+      zoneId: oldNode.assignedZoneId ?? 'zone-q1',
+      monitoringPointId: oldNode.assignedPointId,
+      replacedAt: now,
+      reason: reason,
+      historicalMeasurementsPreserved: true,
+      updatedReplacementNode: activatedNewNode,
+      retiredNode: retiredOldNode,
+    );
+  }
+
+  @override
+  Future<Esp32Node> replaceNode({
+    required String oldNodeId,
+    required String newNodeId,
+  }) async {
+    final result = await executeNodeReplacement(
+      oldNodeId: oldNodeId,
+      replacementNodeId: newNodeId,
+    );
+    return result.updatedReplacementNode;
+  }
+
+  @override
+  Future<Esp32Node> provisionNode({
+    required String nodeId,
+    required NodeProvisioningRequestDto request,
+  }) async {
+    final idx = _nodes.indexWhere((n) => n.id == nodeId);
+    if (idx == -1) {
+      throw Exception('Node $nodeId not found.');
+    }
+    final current = _nodes[idx];
+    final updated = current.copyWith(
+      lifecycleState: NodeLifecycleStatus.provisioned,
+      commissioningToken: request.commissioningToken,
+      assignedFieldId: request.fieldId,
+      assignedZoneId: request.zoneId ?? current.assignedZoneId,
+      assignedPointId: request.monitoringPointId ?? current.assignedPointId,
+      coordinates: (request.latitude != null || request.localX != null)
+          ? SpatialCoordinates(
+              latitude: request.latitude,
+              longitude: request.longitude,
+              localX: request.localX,
+              localY: request.localY,
+            )
+          : current.coordinates,
+      commissionedAt: DateTime.now(),
+    );
+    _nodes[idx] = updated;
+    _controller.add(List.unmodifiable(_nodes));
+    return updated;
+  }
+
+  @override
+  Future<bool> decommissionNode(String nodeId) async {
+    final idx = _nodes.indexWhere((n) => n.id == nodeId);
+    if (idx == -1) return false;
+    _nodes[idx] = _nodes[idx].copyWith(
+      lifecycleState: NodeLifecycleStatus.decommissioned,
+      assignedZoneId: null,
+      assignedPointId: null,
     );
     _controller.add(List.unmodifiable(_nodes));
-    return _nodes[newIdx];
+    return true;
+  }
+
+  @override
+  Future<Esp32Node> updateNodeMetadata({
+    required String nodeId,
+    String? displayName,
+    SpatialCoordinates? coordinates,
+  }) async {
+    final idx = _nodes.indexWhere((n) => n.id == nodeId);
+    if (idx == -1) {
+      throw Exception('Node $nodeId not found.');
+    }
+    final current = _nodes[idx];
+    final updated = current.copyWith(
+      displayName: displayName ?? current.displayName,
+      coordinates: coordinates ?? current.coordinates,
+    );
+    _nodes[idx] = updated;
+    _controller.add(List.unmodifiable(_nodes));
+    return updated;
   }
 
   @override

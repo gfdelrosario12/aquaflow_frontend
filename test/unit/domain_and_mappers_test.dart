@@ -62,9 +62,16 @@ void main() {
   // AwdRuleEngine
   // ──────────────────────────────────────────────────────────────────────────
   group('AwdRuleEngine', () {
-    test('requires four zones for field evaluation', () {
+    test('enforces quorum requirement or zero zones for field evaluation', () {
+      final summaryEmpty = AwdRuleEngine.evaluateFieldAwd(
+        zones: const [],
+      );
+      expect(summaryEmpty.isInsufficientData, isTrue);
+      expect(summaryEmpty.recommendation.title, contains('Insufficient'));
+
       final summary = AwdRuleEngine.evaluateFieldAwd(
         zones: sampleFieldZones().take(2).toList(),
+        minRequiredZones: 4,
       );
       expect(summary.isInsufficientData, isTrue);
       expect(summary.recommendation.title, contains('Insufficient'));

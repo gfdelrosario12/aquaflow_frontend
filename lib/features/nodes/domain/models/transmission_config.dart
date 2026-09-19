@@ -14,13 +14,13 @@ class TransmissionConfig {
   final String? adaptiveReason;
 
   /// Timestamp when interval was last configured or adaptively changed
-  final DateTime lastConfiguredAt;
+  final DateTime? lastConfiguredAt;
 
   const TransmissionConfig({
-    required this.intervalSeconds,
+    this.intervalSeconds = 300,
     this.isAdaptive = false,
     this.adaptiveReason,
-    required this.lastConfiguredAt,
+    this.lastConfiguredAt,
   });
 
   TransmissionMode get mode =>
@@ -44,7 +44,8 @@ class TransmissionConfig {
         'intervalSeconds': intervalSeconds,
         'isAdaptive': isAdaptive,
         if (adaptiveReason != null) 'adaptiveReason': adaptiveReason,
-        'lastConfiguredAt': lastConfiguredAt.toIso8601String(),
+        if (lastConfiguredAt != null)
+          'lastConfiguredAt': lastConfiguredAt!.toIso8601String(),
       };
 
   factory TransmissionConfig.fromJson(Map<String, dynamic> json) {

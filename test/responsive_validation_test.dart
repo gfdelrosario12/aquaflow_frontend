@@ -1,4 +1,3 @@
-import 'package:aquaflow_frontend/core/constants/app_dimensions.dart';
 import 'package:aquaflow_frontend/core/offline/offline_models.dart';
 import 'package:aquaflow_frontend/core/widgets/offline_banner.dart';
 import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
@@ -13,10 +12,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'support/responsive.dart';
 
 void main() {
-  group('Responsive phone widths', () {
+  group('Responsive viewports', () {
     for (final width in [
-      AppDimensions.minMobileWidth,
-      AppDimensions.maxMobileWidth,
+      360.0,
+      400.0,
+      600.0,
+      900.0,
+      1200.0,
     ]) {
       testWidgets('HomeScreen at ${width.toInt()}px has no overflow',
           (tester) async {

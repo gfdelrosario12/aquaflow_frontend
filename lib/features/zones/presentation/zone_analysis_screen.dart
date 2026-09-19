@@ -196,6 +196,15 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    _buildFreshnessBadge(zone),
+                    _buildReliabilityBadge(zone),
+                  ],
+                ),
               ],
             ),
           ),
@@ -233,7 +242,7 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
           ),
           const SizedBox(height: AppDimensions.spaceSm),
           Text(
-            'Monitoring zones Q1–Q4 serve as read-only telemetry points. Zone-level pump or valve activation controls are not available because centralized irrigation serves the entire field as a single operational unit.',
+            'Monitoring zones serve as read-only telemetry points. Zone-level pump or valve activation controls are not available because centralized irrigation serves the entire field as a single operational unit.',
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: AppDimensions.spaceSm),
@@ -502,6 +511,30 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
                 value: _formatFullTime(zone.lastUpdated),
                 icon: Icons.access_time,
               ),
+              const Divider(height: 12),
+              _buildDiagnosticRow(
+                theme,
+                label: 'Telemetry Quality',
+                value: (zone.waterLevelCm < -30.0 || zone.waterLevelCm > 30.0)
+                    ? 'Out of Bounds (Invalid)'
+                    : (!zone.isOnline ? 'Node Offline' : 'Reliable Telemetry'),
+                valueColor: (zone.waterLevelCm < -30.0 || zone.waterLevelCm > 30.0)
+                    ? AppColors.error
+                    : (!zone.isOnline ? AppColors.zoneOffline : AppColors.success),
+                icon: Icons.verified_outlined,
+              ),
+              const Divider(height: 12),
+              _buildDiagnosticRow(
+                theme,
+                label: 'Telemetry Freshness',
+                value: DateTime.now().difference(zone.lastUpdated).inMinutes >= 15
+                    ? 'Stale (${DateTime.now().difference(zone.lastUpdated).inMinutes}m ago)'
+                    : 'Fresh (${DateTime.now().difference(zone.lastUpdated).inMinutes}m ago)',
+                valueColor: DateTime.now().difference(zone.lastUpdated).inMinutes >= 15
+                    ? AppColors.warning
+                    : AppColors.success,
+                icon: Icons.history,
+              ),
             ],
           ),
         ),
@@ -555,5 +588,89 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
     final hour = dt.hour.toString().padLeft(2, '0');
     final minute = dt.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  Widget _buildFreshnessBadge(MonitoringZone zone) {
+    final ageMinutes = DateTime.now().difference(zone.lastUpdated).inMinutes.clamp(0, 99999);
+    final isStale = ageMinutes >= 15;
+    final color = isStale ? AppColors.warning : AppColors.success;
+    final icon = isStale ? Icons.history : Icons.check_circle_outline;
+    final text = isStale ? 'Stale (${ageMinutes}m ago)' : 'Fresh (${ageMinutes}m ago)';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReliabilityBadge(MonitoringZone zone) {
+    final isOutOfBounds = zone.waterLevelCm < -30.0 || zone.waterLevelCm > 30.0;
+    final ageMinutes = DateTime.now().difference(zone.lastUpdated).inMinutes;
+    final isStale = ageMinutes >= 15;
+
+    final Color color;
+    final IconData icon;
+    final String label;
+
+    if (isOutOfBounds) {
+      color = AppColors.error;
+      icon = Icons.cancel_outlined;
+      label = 'Out of Range';
+    } else if (!zone.isOnline) {
+      color = AppColors.zoneOffline;
+      icon = Icons.sensors_off;
+      label = 'Station Offline';
+    } else if (isStale) {
+      color = AppColors.warning;
+      icon = Icons.warning_amber_outlined;
+      label = 'Degraded Telemetry';
+    } else {
+      color = AppColors.primary;
+      icon = Icons.verified_user_outlined;
+      label = 'Valid Telemetry';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

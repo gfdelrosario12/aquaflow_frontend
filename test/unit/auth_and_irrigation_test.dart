@@ -6,8 +6,6 @@
 //  – Irrigation command handling (ENTIRE FIELD accepted; Q1–Q4 rejected)
 //  – AWD measurement data transformations / zone drying rates
 
-import 'dart:async';
-
 import 'package:aquaflow_frontend/core/api/api_client.dart';
 import 'package:aquaflow_frontend/core/api/api_config.dart';
 import 'package:aquaflow_frontend/core/api/api_dtos.dart';
@@ -31,7 +29,7 @@ void main() {
   // AuthNotifier state transitions
   // ──────────────────────────────────────────────────────────────────────────
   group('AuthNotifier state transitions', () {
-    AuthNotifier _notifier() => AuthNotifier(
+    AuthNotifier makeNotifier() => AuthNotifier(
           authRepository: AuthRepositoryImpl(
             authService: MockAuthService(),
             storageService: MemorySecureStorage(),
@@ -39,7 +37,7 @@ void main() {
         );
 
     test('moves initial → authenticated → unauthenticated', () async {
-      final notifier = _notifier();
+      final notifier = makeNotifier();
       expect(notifier.state.status, AuthStatus.initial);
 
       final ok = await notifier.login('operator@aquaflow.io', 'pass');
@@ -51,14 +49,14 @@ void main() {
     });
 
     test('rejects empty credentials without authenticating', () async {
-      final notifier = _notifier();
+      final notifier = makeNotifier();
       final ok = await notifier.login('  ', '');
       expect(ok, isFalse);
       expect(notifier.state.status, AuthStatus.error);
     });
 
     test('stays in error state on wrong credentials', () async {
-      final notifier = _notifier();
+      final notifier = makeNotifier();
       final ok = await notifier.login('operator', 'wrongpassword');
       expect(ok, isFalse);
       expect(notifier.state.isAuthenticated, isFalse);
@@ -66,14 +64,14 @@ void main() {
     });
 
     test('state session is null before login and non-null after', () async {
-      final notifier = _notifier();
+      final notifier = makeNotifier();
       expect(notifier.state.session, isNull);
       await notifier.login('operator@aquaflow.io', 'pass');
       expect(notifier.state.session, isNotNull);
     });
 
     test('logout clears session from state', () async {
-      final notifier = _notifier();
+      final notifier = makeNotifier();
       await notifier.login('operator@aquaflow.io', 'pass');
       await notifier.logout();
       expect(notifier.state.session, isNull);
@@ -84,15 +82,15 @@ void main() {
   // Typed API error handling — 401, 403, 500, timeout, decode
   // ──────────────────────────────────────────────────────────────────────────
   group('Typed API error handling', () {
-    ApiClient _client(Future<http.StreamedResponse> Function(http.BaseRequest) handler) {
+    ApiClient makeClient(Future<http.StreamedResponse> Function(http.BaseRequest) handler) {
       return ApiClient(
         config: const ApiConfig(baseUrl: 'https://example.test'),
         httpClient: FakeHttpClient(handler),
       );
     }
 
-    Future<void> _expectKind(int status, ApiErrorKind kind) async {
-      final client = _client(
+    Future<void> expectKind(int status, ApiErrorKind kind) async {
+      final client = makeClient(
         (request) async => fakeJsonResponse(request, status, '{"message":"x"}'),
       );
       await expectLater(
@@ -102,31 +100,31 @@ void main() {
     }
 
     test('maps 401 to authentication', () async {
-      await _expectKind(401, ApiErrorKind.authentication);
+      await expectKind(401, ApiErrorKind.authentication);
     });
 
     test('maps 403 to authorization', () async {
-      await _expectKind(403, ApiErrorKind.authorization);
+      await expectKind(403, ApiErrorKind.authorization);
     });
 
     test('maps 500 to server error', () async {
-      await _expectKind(500, ApiErrorKind.server);
+      await expectKind(500, ApiErrorKind.server);
     });
 
     test('maps 503 to server error', () async {
-      await _expectKind(503, ApiErrorKind.server);
+      await expectKind(503, ApiErrorKind.server);
     });
 
     test('maps 422 to validation error', () async {
-      await _expectKind(422, ApiErrorKind.validation);
+      await expectKind(422, ApiErrorKind.validation);
     });
 
     test('maps 400 to validation error', () async {
-      await _expectKind(400, ApiErrorKind.validation);
+      await expectKind(400, ApiErrorKind.validation);
     });
 
     test('maps malformed JSON body to decoding error', () async {
-      final client = _client(
+      final client = makeClient(
         (request) async => fakeJsonResponse(request, 200, '{malformed'),
       );
       await expectLater(
@@ -157,7 +155,7 @@ void main() {
     });
 
     test('ApiException exposes statusCode correctly', () async {
-      final client = _client(
+      final client = makeClient(
         (request) async => fakeJsonResponse(request, 403, '{"message":"forbidden"}'),
       );
       await expectLater(

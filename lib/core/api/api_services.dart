@@ -148,6 +148,50 @@ class NodeApiService {
           body: config.toJson(),
         ),
       );
+
+  Future<ResourceDto> provisionNode(
+    String id,
+    NodeProvisioningRequestDto request,
+  ) async =>
+      ResourceDto.fromJson(
+        await client.post('/api/nodes/$id/provision', body: request.toJson()),
+      );
+
+  Future<ResourceDto> updateLifecycle(
+    String id,
+    NodeLifecycleUpdateDto update,
+  ) async =>
+      ResourceDto.fromJson(
+        await client.post('/api/nodes/$id/lifecycle', body: update.toJson()),
+      );
+
+  Future<NodeReplacementResultDto> replaceNode(
+    String id,
+    NodeReplacementRequestDto request,
+  ) async {
+    final response = await client.post(
+      '/api/nodes/$id/replace',
+      body: request.toJson(),
+    );
+    return NodeReplacementResultDto.fromJson(
+      response is Map<String, dynamic>
+          ? response
+          : (response as Map).cast<String, dynamic>(),
+    );
+  }
+
+  Future<ResourceDto> updateNode(
+    String id,
+    Map<String, dynamic> patch,
+  ) async =>
+      ResourceDto.fromJson(
+        await client.patch('/api/nodes/$id', body: patch),
+      );
+
+  Future<bool> decommissionNode(String id) async {
+    await client.delete('/api/nodes/$id');
+    return true;
+  }
 }
 
 class IrrigationApiService {
@@ -175,4 +219,58 @@ class IrrigationApiService {
           body: const IrrigationCommandDto().toJson(),
         ),
       );
+
+  Future<AutoIrrigationConfigDto> getAutoConfig({
+    String systemId = 'default',
+  }) async {
+    final response = await client.get(
+      '/api/irrigation/auto-config',
+      query: {'systemId': systemId},
+    );
+    return AutoIrrigationConfigDto.fromJson(response as JsonMap);
+  }
+
+  Future<AutoIrrigationConfigDto> updateAutoConfig(
+    AutoIrrigationConfigDto config,
+  ) async {
+    final response = await client.put(
+      '/api/irrigation/auto-config',
+      body: config.toJson(),
+    );
+    return AutoIrrigationConfigDto.fromJson(response as JsonMap);
+  }
+
+  Future<AutoIrrigationStatusDto> getAutoState({
+    String systemId = 'default',
+  }) async {
+    final response = await client.get(
+      '/api/irrigation/auto-state',
+      query: {'systemId': systemId},
+    );
+    return AutoIrrigationStatusDto.fromJson(response as JsonMap);
+  }
+
+  Future<AutoIrrigationStatusDto> clearLockout(
+    ClearLockoutRequestDto request,
+  ) async {
+    final response = await client.post(
+      '/api/irrigation/auto-lockout/clear',
+      body: request.toJson(),
+    );
+    return AutoIrrigationStatusDto.fromJson(response as JsonMap);
+  }
+
+  Future<IrrigationAuditLogListDto> getAuditLogs({
+    String systemId = 'default',
+    int limit = 50,
+  }) async {
+    final response = await client.get(
+      '/api/irrigation/audit-log',
+      query: {
+        'systemId': systemId,
+        'limit': limit.toString(),
+      },
+    );
+    return IrrigationAuditLogListDto.fromJson(response);
+  }
 }

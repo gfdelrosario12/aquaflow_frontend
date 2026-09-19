@@ -36,18 +36,22 @@ void main() {
       expect(summary.recommendation.rationale, contains('reflood'));
     });
 
-    test('returns insufficient data summary when fewer than 4 nodes report', () async {
+    test('returns insufficient data summary when zero nodes report or quorum unmet', () async {
+      final summaryEmpty = AwdRuleEngine.evaluateFieldAwd(
+        zones: const [],
+      );
+      expect(summaryEmpty.isInsufficientData, isTrue);
+      expect(summaryEmpty.recommendation.title, contains('Insufficient Telemetry Data'));
+
       final zones = await zoneRepo.fetchMonitoringZones(
         mockState: ZoneMockState.normal,
       );
       final subset = zones.take(2).toList();
-
-      final summary = AwdRuleEngine.evaluateFieldAwd(
+      final summaryQuorum = AwdRuleEngine.evaluateFieldAwd(
         zones: subset,
+        minRequiredZones: 4,
       );
-
-      expect(summary.isInsufficientData, isTrue);
-      expect(summary.recommendation.title, contains('Insufficient Telemetry Data'));
+      expect(summaryQuorum.isInsufficientData, isTrue);
     });
 
     test('computes quad-zone drying rates per day correctly', () async {
@@ -110,7 +114,7 @@ void main() {
 
       expect(find.text('Insufficient Telemetry Data'), findsOneWidget);
       expect(
-          find.textContaining('require active telemetry from all 4 monitoring quadrants'),
+          find.textContaining('Active zone telemetry'),
           findsOneWidget);
     });
 

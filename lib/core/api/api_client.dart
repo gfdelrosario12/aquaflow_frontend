@@ -71,6 +71,36 @@ class ApiClient {
     );
   }
 
+  Future<Object?> patch(
+    String path, {
+    Map<String, Object?>? body,
+    bool authorized = true,
+    bool retryable = false,
+  }) {
+    return request(
+      'PATCH',
+      path,
+      body: body,
+      authorized: authorized,
+      retryable: retryable,
+    );
+  }
+
+  Future<Object?> delete(
+    String path, {
+    Map<String, String>? query,
+    bool authorized = true,
+    bool retryable = false,
+  }) {
+    return request(
+      'DELETE',
+      path,
+      query: query,
+      authorized: authorized,
+      retryable: retryable,
+    );
+  }
+
   Future<Object?> request(
     String method,
     String path, {

@@ -13,7 +13,7 @@ import '../../zones/data/datasources/zone_data_source.dart';
 import '../../zones/data/repositories/zone_repository.dart';
 import '../../zones/domain/models/monitoring_zone.dart';
 import 'widgets/field_header_overview_card.dart';
-import 'widgets/quadrant_grid_visualizer.dart';
+import 'widgets/dynamic_zone_grid_visualizer.dart';
 import 'widgets/zone_detail_bottom_sheet.dart';
 
 enum FieldVisualizationMode { matrix, spatial }
@@ -22,12 +22,14 @@ class FieldScreen extends StatefulWidget {
   final VoidCallback? onNavigateToControl;
   final ZoneRepository? repository;
   final NodeRepository? nodeRepository;
+  final ControlUserRole userRole;
 
   const FieldScreen({
     super.key,
     this.onNavigateToControl,
     this.repository,
     this.nodeRepository,
+    this.userRole = ControlUserRole.operator,
   });
 
   @override
@@ -98,6 +100,7 @@ class _FieldScreenState extends State<FieldScreen> {
       context,
       zone: zone,
       assignedNodes: assignedNodes,
+      userRole: widget.userRole,
       onNavigateToControl: widget.onNavigateToControl,
       onConfigureInterval: (node) => _configureNodeInterval(node),
     );
@@ -107,7 +110,7 @@ class _FieldScreenState extends State<FieldScreen> {
     await TransmissionIntervalDialog.show(
       context,
       node: node,
-      userRole: ControlUserRole.operator,
+      userRole: widget.userRole,
       onConfigure: (interval, {bool isAdaptive = false, String? reason}) async {
         await _nodeRepository.configureTransmissionInterval(
           node.id,
@@ -169,7 +172,7 @@ class _FieldScreenState extends State<FieldScreen> {
           ),
           Expanded(
             child: EmptyStateWidget(
-              title: 'No Monitoring Quadrants',
+              title: 'No Monitoring Zones',
               message: 'No sensor nodes deployed or active in this field.',
               actionLabel: 'Reset Telemetry',
               onAction: () => _loadZones(overrideState: ZoneMockState.normal),
@@ -245,14 +248,14 @@ class _FieldScreenState extends State<FieldScreen> {
                 onConfigureInterval: (node) => _configureNodeInterval(node),
               )
             else
-              QuadrantGridVisualizer(
+              DynamicZoneGridVisualizer(
                 zones: _zones,
                 selectedZoneCode: _selectedZoneCode,
                 onZoneSelected: _handleZoneSelection,
               ),
             const SizedBox(height: AppDimensions.spaceLg),
             Text(
-              'Detailed Quadrant Telemetry List',
+              'Detailed Zone Telemetry List',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -294,7 +297,7 @@ class _FieldScreenState extends State<FieldScreen> {
               ),
               const SizedBox(height: 2),
               Text(
-                'Independent Telemetry Quadrants Q1–Q4',
+                'Independent Telemetry Monitoring Zones',
                 style: theme.textTheme.bodyMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -379,7 +382,7 @@ class _FieldScreenState extends State<FieldScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Monitoring Quadrants Only',
+                  'Read-Only Monitoring Zones',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),

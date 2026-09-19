@@ -212,7 +212,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               Text(
                 state.searchQuery.isNotEmpty || state.severityFilter != null || state.unreadOnly
                     ? 'No alerts match your active filter criteria.'
-                    : 'All field monitoring zones (Q1–Q4) and centralized irrigation hardware are operating normally.',
+                    : 'All field monitoring zones and centralized irrigation hardware are operating normally.',
                 textAlign: TextAlign.center,
                 style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color),
               ),

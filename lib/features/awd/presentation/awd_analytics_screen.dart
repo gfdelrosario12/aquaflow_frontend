@@ -14,6 +14,9 @@ import '../../../core/widgets/status_badge.dart';
 import '../../control/presentation/control_screen.dart';
 import '../data/repositories/awd_repository.dart';
 import '../domain/models/awd_analytics_summary.dart';
+import '../domain/models/awd_automation_eligibility.dart';
+import '../domain/models/awd_confidence.dart';
+import '../domain/models/crop_growth_stage.dart';
 import '../domain/models/awd_recommendation.dart';
 import '../domain/models/awd_threshold_config.dart';
 
@@ -174,8 +177,8 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
         padding: const EdgeInsets.all(AppDimensions.spaceMd),
         child: EmptyStateWidget(
           title: 'Insufficient Telemetry Data',
-          message:
-              'AWD field analytics require active telemetry from all 4 monitoring quadrants (Q1–Q4). Currently fewer than 4 nodes are reporting.',
+          message: _summary?.recommendation.rationale ??
+              'Active monitoring zone telemetry is required to evaluate field-level AWD recommendations.',
           actionLabel: 'Reset Telemetry Data',
           onAction: () => _loadAnalytics(overrideState: AwdMockState.normal),
         ),
@@ -192,6 +195,26 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
           // Stale Telemetry Warning Banner
           if (summary.isStaleData) ...[
             _buildStaleBanner(theme),
+            const SizedBox(height: AppDimensions.spaceMd),
+          ],
+
+          // Disparity / Conflicting Condition Warning Card
+          if (summary.hasConflictingConditions) ...[
+            _buildDisparityWarningCard(theme, summary),
+            const SizedBox(height: AppDimensions.spaceMd),
+          ],
+
+          // Outlier Telemetry Notice
+          if (summary.flaggedOutlierZoneCodes.isNotEmpty) ...[
+            _buildOutlierBanner(theme, summary),
+            const SizedBox(height: AppDimensions.spaceMd),
+          ],
+
+          // Automated Irrigation Safety Inhibition Warning
+          if (summary.autoEligibility != null &&
+              !summary.autoEligibility!.isEligibleForAutoIrrigation &&
+              summary.autoEligibility!.inhibitionReasons.isNotEmpty) ...[
+            _buildAutoInhibitionBanner(theme, summary.autoEligibility!),
             const SizedBox(height: AppDimensions.spaceMd),
           ],
 
@@ -244,6 +267,229 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDisparityWarningCard(ThemeData theme, AwdAnalyticsSummary summary) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spaceSm),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: AppColors.warning),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber, color: AppColors.warning, size: 20),
+              const SizedBox(width: AppDimensions.spaceSm),
+              Expanded(
+                child: Text(
+                  'High Zone Disparity Alert (${summary.waterDepthSpreadCm.toStringAsFixed(1)} cm Spread)',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Extreme water depth disparity detected across monitoring zones. Drying zones require water, but other zones remain flooded (+${summary.maxWaterDepthCm.toStringAsFixed(1)} cm). Field inspection is advised before executing centralized pumping to prevent localized over-flooding.',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutlierBanner(ThemeData theme, AwdAnalyticsSummary summary) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.spaceSm, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_alt_off, color: AppColors.error, size: 16),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Filtered Outlier Readings: Zones ${summary.flaggedOutlierZoneCodes.join(', ')} reported anomalous readings and were excluded from field averages.',
+              style: theme.textTheme.bodySmall?.copyWith(color: AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildConfidenceChip(ThemeData theme, AwdConfidence confidence) {
+    Color chipColor;
+    switch (confidence.level) {
+      case AwdConfidenceLevel.high:
+        chipColor = AppColors.success;
+        break;
+      case AwdConfidenceLevel.medium:
+        chipColor = AppColors.warning;
+        break;
+      case AwdConfidenceLevel.low:
+      case AwdConfidenceLevel.insufficient:
+        chipColor = AppColors.error;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: chipColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: chipColor.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.verified_outlined, size: 13, color: chipColor),
+          const SizedBox(width: 4),
+          Text(
+            '${confidence.level.label} (${(confidence.score * 100).toInt()}%)',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: chipColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCropStageChip(ThemeData theme, CropGrowthStage stage) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.grass, size: 13, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(
+            stage.label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoEligibilityChip(
+      ThemeData theme, AwdAutomationEligibility eligibility) {
+    final isEligible = eligibility.isEligibleForAutoIrrigation;
+    final color = isEligible ? AppColors.success : AppColors.alertWarning;
+    final icon = isEligible ? Icons.auto_mode : Icons.lock_outline;
+    final label = isEligible
+        ? 'Auto Eligible (${eligibility.recommendedDurationMinutes}m)'
+        : 'Auto Inhibited';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoInhibitionBanner(
+      ThemeData theme, AwdAutomationEligibility eligibility) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spaceSm),
+      decoration: BoxDecoration(
+        color: AppColors.alertWarning.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: AppColors.alertWarning),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined,
+                  color: AppColors.alertWarning, size: 20),
+              const SizedBox(width: AppDimensions.spaceSm),
+              Expanded(
+                child: Text(
+                  'Automated Irrigation Inhibited',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.alertWarning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            eligibility.summaryRationale,
+            style: theme.textTheme.bodySmall,
+          ),
+          if (eligibility.inhibitionReasons.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ...eligibility.inhibitionReasons.map(
+              (reason) => Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('• ',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.alertWarning)),
+                    Expanded(
+                      child: Text(
+                        AwdInhibitionReason.toHumanDescription(reason),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.alertWarning,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -304,6 +550,28 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
                     color: statusColor,
                     fontSize: 12,
                   ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spaceSm),
+          Wrap(
+            spacing: AppDimensions.spaceSm,
+            runSpacing: 4,
+            children: [
+              _buildConfidenceChip(theme, summary.confidence),
+              _buildCropStageChip(theme, summary.activeThresholdConfig.cropStage),
+              if (summary.autoEligibility != null)
+                _buildAutoEligibilityChip(theme, summary.autoEligibility!),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${summary.usableReportingZones.length}/${summary.totalNodes} Nodes Usable',
+                  style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
                 ),
               ),
             ],
@@ -489,7 +757,7 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'AquaSense evaluates Q1–Q4 telemetry as a single unified field unit. Zone-level pump or valve triggers do not exist; all watering decisions control the centralized field irrigation pump.',
+            'AquaSense evaluates field monitoring telemetry as a single unified field unit. Zone-level pump or valve triggers do not exist; all watering decisions control the centralized field irrigation pump.',
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -529,6 +797,13 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
             style: theme.textTheme.bodySmall,
           ),
           const SizedBox(height: AppDimensions.spaceSm),
+          _buildThresholdRow(
+            theme,
+            label: 'Crop Growth Stage',
+            value: cfg.cropStage.label,
+            icon: Icons.grass,
+          ),
+          const Divider(height: 12),
           _buildThresholdRow(
             theme,
             label: 'Safe Drying Limit',

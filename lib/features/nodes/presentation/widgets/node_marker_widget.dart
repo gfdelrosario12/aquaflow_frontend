@@ -18,9 +18,11 @@ class NodeMarkerWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = !node.isOnline
+    final isMaintenance = node.lifecycleState == NodeLifecycleStatus.maintenance;
+    final isRetired = node.isRetired;
+    final statusColor = !node.isOnline || isRetired
         ? AppColors.error
-        : (node.batteryPercent != null && node.batteryPercent! < 20
+        : (isMaintenance || (node.batteryPercent != null && node.batteryPercent! < 20)
             ? AppColors.warning
             : AppColors.success);
 
@@ -56,24 +58,33 @@ class NodeMarkerWidget extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Live status dot
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: statusColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      if (node.isOnline)
-                        BoxShadow(
-                          color: statusColor.withValues(alpha: 0.6),
-                          blurRadius: 4,
-                          spreadRadius: 1,
-                        ),
-                    ],
+                if (isMaintenance) ...[
+                  const Icon(
+                    Icons.build,
+                    size: 10,
+                    color: AppColors.warning,
                   ),
-                ),
-                const SizedBox(width: 6),
+                  const SizedBox(width: 4),
+                ] else ...[
+                  // Live status dot
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        if (node.isOnline)
+                          BoxShadow(
+                            color: statusColor.withValues(alpha: 0.6),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 // Display Name
                 Text(
                   node.displayName.length > 14

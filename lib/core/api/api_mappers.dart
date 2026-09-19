@@ -4,6 +4,9 @@ import '../../features/control/domain/models/control_enums.dart';
 import '../../features/auth/domain/models/auth_token.dart';
 import '../../features/auth/domain/models/user_session.dart';
 import '../../features/field/domain/models/models.dart';
+import '../../features/irrigation/domain/models/auto_irrigation_config.dart';
+import '../../features/irrigation/domain/models/auto_irrigation_status.dart';
+import '../../features/irrigation/domain/models/irrigation_execution_audit_log.dart';
 import '../../features/nodes/domain/models/models.dart';
 import '../../features/zones/domain/models/monitoring_zone.dart';
 import 'api_dtos.dart';
@@ -155,9 +158,22 @@ class ApiMappers {
       displayName: _string(data['displayName'] ?? data['name'], fallback: 'ESP32 Node'),
       assignedFieldId: data['assignedFieldId']?.toString(),
       assignedZoneId: data['assignedZoneId']?.toString(),
+      assignedPointId: data['assignedPointId']?.toString(),
       coordinates: spatialCoordinates(data['coordinates'] ?? data),
       transmissionConfig: transmissionConfig(data['transmissionConfig'] ?? data),
       isOnline: data['isOnline'] as bool? ?? false,
+      lifecycleState: _enumValue(
+        NodeLifecycleStatus.values,
+        data['lifecycleState'] ?? data['lifecycleStatus'],
+        NodeLifecycleStatus.active,
+      ),
+      commissioningToken: data['commissioningToken']?.toString(),
+      replacedByNodeId: data['replacedByNodeId']?.toString(),
+      replacesNodeId: data['replacesNodeId']?.toString(),
+      replacedAt: _date(data['replacedAt']),
+      commissionedAt: _date(data['commissionedAt']),
+      hardwareRevision: _string(data['hardwareRevision'], fallback: 'v2.1'),
+      firmwareVersion: _string(data['firmwareVersion'], fallback: '1.0.0'),
       batteryPercent: _intNullable(data['batteryPercent']),
       batteryVoltage: _doubleNullable(data['batteryVoltage']),
       rssiDbm: _intNullable(data['rssiDbm']),
@@ -167,6 +183,64 @@ class ApiMappers {
       waterLevelCm: _doubleNullable(data['waterLevelCm'] ?? data['waterLevel']),
       temperatureCelsius: _doubleNullable(data['temperatureCelsius'] ?? data['temperature']),
       humidityPercent: _doubleNullable(data['humidityPercent'] ?? data['humidity']),
+    );
+  }
+
+  static Esp32Node esp32NodeFromDto(Esp32NodeDto dto) {
+    return Esp32Node(
+      id: dto.id,
+      macAddress: dto.macAddress,
+      displayName: dto.displayName,
+      assignedFieldId: dto.assignedFieldId,
+      assignedZoneId: dto.assignedZoneId,
+      coordinates: (dto.latitude != null || dto.localX != null)
+          ? SpatialCoordinates(
+              latitude: dto.latitude,
+              longitude: dto.longitude,
+              localX: dto.localX,
+              localY: dto.localY,
+            )
+          : null,
+      transmissionConfig: TransmissionConfig(
+        intervalSeconds: dto.transmissionIntervalSeconds,
+        isAdaptive: dto.isAdaptive,
+        adaptiveReason: dto.adaptiveReason,
+      ),
+      isOnline: dto.isOnline,
+      lifecycleState: _enumValue(
+        NodeLifecycleStatus.values,
+        dto.lifecycleState,
+        NodeLifecycleStatus.active,
+      ),
+      commissioningToken: dto.commissioningToken,
+      replacedByNodeId: dto.replacedByNodeId,
+      replacesNodeId: dto.replacesNodeId,
+      replacedAt: _date(dto.replacedAt),
+      commissionedAt: _date(dto.commissionedAt),
+      batteryPercent: dto.batteryPercent,
+      batteryVoltage: dto.batteryVoltage,
+      rssiDbm: dto.rssiDbm,
+      snrDb: dto.snrDb,
+      lastSeen: _date(dto.lastSeen) ?? DateTime.now(),
+      soilMoisturePercent: _doubleNullable(dto.latestTelemetry?['soilMoisturePercent']),
+      waterLevelCm: _doubleNullable(dto.latestTelemetry?['waterLevelCm']),
+      temperatureCelsius: _doubleNullable(dto.latestTelemetry?['temperatureCelsius']),
+      humidityPercent: _doubleNullable(dto.latestTelemetry?['humidityPercent']),
+    );
+  }
+
+  static NodeReplacementResult nodeReplacementResult(NodeReplacementResultDto dto) {
+    return NodeReplacementResult(
+      oldNodeId: dto.oldNodeId,
+      replacementNodeId: dto.replacementNodeId,
+      fieldId: dto.fieldId,
+      zoneId: dto.zoneId,
+      monitoringPointId: dto.monitoringPointId,
+      replacedAt: _date(dto.replacedAt) ?? DateTime.now(),
+      reason: dto.reason,
+      historicalMeasurementsPreserved: dto.historicalMeasurementsPreserved,
+      updatedReplacementNode: esp32NodeFromDto(dto.updatedReplacementNode),
+      retiredNode: esp32NodeFromDto(dto.retiredNode),
     );
   }
 
@@ -306,6 +380,136 @@ class ApiMappers {
       outcome: _enumValue(CommandOutcome.values, data['outcome'], CommandOutcome.failed),
       message: _string(data['message'], fallback: 'Command response received.'),
       timestamp: _date(data['timestamp']) ?? DateTime.now(),
+    );
+  }
+
+  static AutoIrrigationConfig autoIrrigationConfig(AutoIrrigationConfigDto dto) {
+    return AutoIrrigationConfig(
+      systemId: dto.systemId,
+      isEnabled: dto.isEnabled,
+      maxDurationMinutes: dto.maxDurationMinutes,
+      minCooldownMinutes: dto.minCooldownMinutes,
+      allowedHoursStart: dto.allowedHoursStart,
+      allowedHoursEnd: dto.allowedHoursEnd,
+      targetFloodDepthCm: dto.targetFloodDepthCm,
+      rainDelayEnabled: dto.rainDelayEnabled,
+      rainDelayHours: dto.rainDelayHours,
+      minConfidenceThreshold: dto.minConfidenceThreshold,
+      updatedAt: _date(dto.updatedAt),
+      updatedBy: dto.updatedBy,
+    );
+  }
+
+  static AutoIrrigationConfigDto autoIrrigationConfigDto(
+      AutoIrrigationConfig domain) {
+    return AutoIrrigationConfigDto(
+      systemId: domain.systemId,
+      isEnabled: domain.isEnabled,
+      maxDurationMinutes: domain.maxDurationMinutes,
+      minCooldownMinutes: domain.minCooldownMinutes,
+      allowedHoursStart: domain.allowedHoursStart,
+      allowedHoursEnd: domain.allowedHoursEnd,
+      targetFloodDepthCm: domain.targetFloodDepthCm,
+      rainDelayEnabled: domain.rainDelayEnabled,
+      rainDelayHours: domain.rainDelayHours,
+      minConfidenceThreshold: domain.minConfidenceThreshold,
+      updatedAt: domain.updatedAt?.toIso8601String(),
+      updatedBy: domain.updatedBy,
+    );
+  }
+
+  static AutoIrrigationStatus autoIrrigationStatus(AutoIrrigationStatusDto dto) {
+    return AutoIrrigationStatus(
+      systemId: dto.systemId,
+      state: _enumValue(
+        AutoIrrigationState.values,
+        dto.state,
+        AutoIrrigationState.disabled,
+      ),
+      activeCommandId: dto.activeCommandId,
+      startedAt: _date(dto.startedAt),
+      targetDurationMinutes: dto.targetDurationMinutes,
+      cooldownUntil: _date(dto.cooldownUntil),
+      lastEvaluationTime: _date(dto.lastEvaluationTime),
+      lastEvaluationResult: dto.lastEvaluationResult,
+      lockoutReason: dto.lockoutReason,
+      lockoutTimestamp: _date(dto.lockoutTimestamp),
+      inhibitionReasons: dto.inhibitionReasons,
+    );
+  }
+
+  static AutoIrrigationStatusDto autoIrrigationStatusDto(
+      AutoIrrigationStatus domain) {
+    return AutoIrrigationStatusDto(
+      systemId: domain.systemId,
+      state: domain.state.name,
+      activeCommandId: domain.activeCommandId,
+      startedAt: domain.startedAt?.toIso8601String(),
+      targetDurationMinutes: domain.targetDurationMinutes,
+      cooldownUntil: domain.cooldownUntil?.toIso8601String(),
+      lastEvaluationTime: domain.lastEvaluationTime?.toIso8601String(),
+      lastEvaluationResult: domain.lastEvaluationResult,
+      lockoutReason: domain.lockoutReason,
+      lockoutTimestamp: domain.lockoutTimestamp?.toIso8601String(),
+      inhibitionReasons: domain.inhibitionReasons,
+    );
+  }
+
+  static IrrigationActor irrigationActor(IrrigationActorDto dto) {
+    return IrrigationActor(
+      type: _enumValue(
+        IrrigationActorType.values,
+        dto.type,
+        IrrigationActorType.system,
+      ),
+      id: dto.id,
+      displayName: dto.displayName,
+    );
+  }
+
+  static IrrigationActorDto irrigationActorDto(IrrigationActor domain) {
+    return IrrigationActorDto(
+      type: domain.type.name,
+      id: domain.id,
+      displayName: domain.displayName,
+    );
+  }
+
+  static IrrigationExecutionAuditLog irrigationExecutionAuditLog(
+      IrrigationExecutionAuditLogDto dto) {
+    return IrrigationExecutionAuditLog(
+      id: dto.id,
+      systemId: dto.systemId,
+      actor: irrigationActor(dto.actor),
+      action: dto.action,
+      triggerContext: dto.triggerContext,
+      triggeringDepthCm: dto.triggeringDepthCm,
+      telemetryConfidenceScore: dto.telemetryConfidenceScore,
+      cropStage: dto.cropStage,
+      targetDurationMinutes: dto.targetDurationMinutes,
+      actualDurationMinutes: dto.actualDurationMinutes,
+      outcome: dto.outcome,
+      timestamp: _date(dto.timestamp) ?? DateTime.now(),
+      failureReason: dto.failureReason,
+    );
+  }
+
+  static IrrigationExecutionAuditLogDto irrigationExecutionAuditLogDto(
+      IrrigationExecutionAuditLog domain) {
+    return IrrigationExecutionAuditLogDto(
+      id: domain.id,
+      systemId: domain.systemId,
+      actor: irrigationActorDto(domain.actor),
+      action: domain.action,
+      triggerContext: domain.triggerContext,
+      triggeringDepthCm: domain.triggeringDepthCm,
+      telemetryConfidenceScore: domain.telemetryConfidenceScore,
+      cropStage: domain.cropStage,
+      targetDurationMinutes: domain.targetDurationMinutes,
+      actualDurationMinutes: domain.actualDurationMinutes,
+      outcome: domain.outcome,
+      timestamp: domain.timestamp.toIso8601String(),
+      failureReason: domain.failureReason,
     );
   }
 

@@ -11,7 +11,11 @@ class ApiNodeRepository implements NodeRepository {
   ApiNodeRepository(this.api);
 
   @override
-  Future<List<Esp32Node>> fetchNodes({String? fieldId, String? zoneId, String? pointId}) async {
+  Future<List<Esp32Node>> fetchNodes({
+    String? fieldId,
+    String? zoneId,
+    String? pointId,
+  }) async {
     final response = await api.listNodes(fieldId: fieldId, zoneId: zoneId);
     var nodes = response.items.map(ApiMappers.esp32Node);
     if (pointId != null) {
@@ -21,23 +25,77 @@ class ApiNodeRepository implements NodeRepository {
   }
 
   @override
+  Future<NodeReplacementResult> executeNodeReplacement({
+    required String oldNodeId,
+    required String replacementNodeId,
+    String? reason,
+    bool transferCalibration = true,
+  }) async {
+    final response = await api.replaceNode(
+      oldNodeId,
+      NodeReplacementRequestDto(
+        replacementNodeId: replacementNodeId,
+        reason: reason,
+        transferCalibration: transferCalibration,
+      ),
+    );
+    return ApiMappers.nodeReplacementResult(response);
+  }
+
+  @override
   Future<Esp32Node> replaceNode({
     required String oldNodeId,
     required String newNodeId,
   }) async {
-    // In API mode, assign newNode to oldNode's point
-    final oldNode = await fetchNodeById(oldNodeId);
-    final response = await api.assignSpatial(
-      newNodeId,
-      NodeSpatialAssignmentDto(
-        fieldId: oldNode?.assignedFieldId ?? '',
-        zoneId: oldNode?.assignedZoneId ?? '',
-        latitude: oldNode?.coordinates?.latitude,
-        longitude: oldNode?.coordinates?.longitude,
-        localX: oldNode?.coordinates?.localX,
-        localY: oldNode?.coordinates?.localY,
+    final result = await executeNodeReplacement(
+      oldNodeId: oldNodeId,
+      replacementNodeId: newNodeId,
+    );
+    return result.updatedReplacementNode;
+  }
+
+  @override
+  Future<Esp32Node> transitionLifecycle({
+    required String nodeId,
+    required NodeLifecycleStatus targetStatus,
+    String? reason,
+    String? notes,
+  }) async {
+    final response = await api.updateLifecycle(
+      nodeId,
+      NodeLifecycleUpdateDto(
+        state: targetStatus.name,
+        reason: reason,
+        notes: notes,
       ),
     );
+    return ApiMappers.esp32Node(response);
+  }
+
+  @override
+  Future<Esp32Node> provisionNode({
+    required String nodeId,
+    required NodeProvisioningRequestDto request,
+  }) async {
+    final response = await api.provisionNode(nodeId, request);
+    return ApiMappers.esp32Node(response);
+  }
+
+  @override
+  Future<bool> decommissionNode(String nodeId) async {
+    return await api.decommissionNode(nodeId);
+  }
+
+  @override
+  Future<Esp32Node> updateNodeMetadata({
+    required String nodeId,
+    String? displayName,
+    SpatialCoordinates? coordinates,
+  }) async {
+    final response = await api.updateNode(nodeId, {
+      if (displayName != null) 'displayName': displayName,
+      if (coordinates != null) 'coordinates': coordinates.toJson(),
+    });
     return ApiMappers.esp32Node(response);
   }
 

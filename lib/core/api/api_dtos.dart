@@ -109,12 +109,18 @@ class Esp32NodeDto {
   final bool isAdaptive;
   final String? adaptiveReason;
   final bool isOnline;
+  final String lifecycleState;
   final int? batteryPercent;
   final double? batteryVoltage;
   final int? rssiDbm;
   final double? snrDb;
   final String? lastSeen;
   final JsonMap? latestTelemetry;
+  final String? commissioningToken;
+  final String? replacedByNodeId;
+  final String? replacesNodeId;
+  final String? replacedAt;
+  final String? commissionedAt;
 
   const Esp32NodeDto({
     required this.id,
@@ -130,12 +136,18 @@ class Esp32NodeDto {
     this.isAdaptive = false,
     this.adaptiveReason,
     this.isOnline = true,
+    this.lifecycleState = 'active',
     this.batteryPercent,
     this.batteryVoltage,
     this.rssiDbm,
     this.snrDb,
     this.lastSeen,
     this.latestTelemetry,
+    this.commissioningToken,
+    this.replacedByNodeId,
+    this.replacesNodeId,
+    this.replacedAt,
+    this.commissionedAt,
   });
 
   factory Esp32NodeDto.fromJson(JsonMap json) {
@@ -153,12 +165,18 @@ class Esp32NodeDto {
       isAdaptive: json['isAdaptive'] as bool? ?? false,
       adaptiveReason: json['adaptiveReason']?.toString(),
       isOnline: json['isOnline'] as bool? ?? false,
+      lifecycleState: json['lifecycleState']?.toString() ?? 'active',
       batteryPercent: json['batteryPercent'] == null ? null : int.tryParse(json['batteryPercent'].toString()),
       batteryVoltage: json['batteryVoltage'] == null ? null : double.tryParse(json['batteryVoltage'].toString()),
       rssiDbm: json['rssiDbm'] == null ? null : int.tryParse(json['rssiDbm'].toString()),
       snrDb: json['snrDb'] == null ? null : double.tryParse(json['snrDb'].toString()),
       lastSeen: json['lastSeen']?.toString(),
       latestTelemetry: json['latestTelemetry'] is JsonMap ? json['latestTelemetry'] as JsonMap : null,
+      commissioningToken: json['commissioningToken']?.toString(),
+      replacedByNodeId: json['replacedByNodeId']?.toString(),
+      replacesNodeId: json['replacesNodeId']?.toString(),
+      replacedAt: json['replacedAt']?.toString(),
+      commissionedAt: json['commissionedAt']?.toString(),
     );
   }
 
@@ -176,12 +194,18 @@ class Esp32NodeDto {
         'isAdaptive': isAdaptive,
         'adaptiveReason': adaptiveReason,
         'isOnline': isOnline,
+        'lifecycleState': lifecycleState,
         'batteryPercent': batteryPercent,
         'batteryVoltage': batteryVoltage,
         'rssiDbm': rssiDbm,
         'snrDb': snrDb,
         'lastSeen': lastSeen,
         'latestTelemetry': latestTelemetry,
+        if (commissioningToken != null) 'commissioningToken': commissioningToken,
+        if (replacedByNodeId != null) 'replacedByNodeId': replacedByNodeId,
+        if (replacesNodeId != null) 'replacesNodeId': replacesNodeId,
+        if (replacedAt != null) 'replacedAt': replacedAt,
+        if (commissionedAt != null) 'commissionedAt': commissionedAt,
       };
 }
 
@@ -272,6 +296,168 @@ class NodeSpatialAssignmentDto {
         if (longitude != null) 'longitude': longitude,
         if (localX != null) 'localX': localX,
         if (localY != null) 'localY': localY,
+      };
+}
+
+class NodeLifecycleUpdateDto {
+  final String state;
+  final String? reason;
+  final String? notes;
+
+  const NodeLifecycleUpdateDto({
+    required this.state,
+    this.reason,
+    this.notes,
+  });
+
+  JsonMap toJson() => {
+        'state': state,
+        if (reason != null) 'reason': reason,
+        if (notes != null) 'notes': notes,
+      };
+
+  factory NodeLifecycleUpdateDto.fromJson(JsonMap json) =>
+      NodeLifecycleUpdateDto(
+        state: json['state']?.toString() ?? 'active',
+        reason: json['reason']?.toString(),
+        notes: json['notes']?.toString(),
+      );
+}
+
+class NodeProvisioningRequestDto {
+  final String commissioningToken;
+  final String fieldId;
+  final String? zoneId;
+  final String? monitoringPointId;
+  final double? latitude;
+  final double? longitude;
+  final double? localX;
+  final double? localY;
+
+  const NodeProvisioningRequestDto({
+    required this.commissioningToken,
+    required this.fieldId,
+    this.zoneId,
+    this.monitoringPointId,
+    this.latitude,
+    this.longitude,
+    this.localX,
+    this.localY,
+  });
+
+  JsonMap toJson() => {
+        'commissioningToken': commissioningToken,
+        'fieldId': fieldId,
+        if (zoneId != null) 'zoneId': zoneId,
+        if (monitoringPointId != null) 'monitoringPointId': monitoringPointId,
+        if (latitude != null) 'latitude': latitude,
+        if (longitude != null) 'longitude': longitude,
+        if (localX != null) 'localX': localX,
+        if (localY != null) 'localY': localY,
+      };
+
+  factory NodeProvisioningRequestDto.fromJson(JsonMap json) =>
+      NodeProvisioningRequestDto(
+        commissioningToken: json['commissioningToken']?.toString() ?? '',
+        fieldId: json['fieldId']?.toString() ?? '',
+        zoneId: json['zoneId']?.toString(),
+        monitoringPointId: json['monitoringPointId']?.toString(),
+        latitude: json['latitude'] == null
+            ? null
+            : double.tryParse(json['latitude'].toString()),
+        longitude: json['longitude'] == null
+            ? null
+            : double.tryParse(json['longitude'].toString()),
+        localX: json['localX'] == null
+            ? null
+            : double.tryParse(json['localX'].toString()),
+        localY: json['localY'] == null
+            ? null
+            : double.tryParse(json['localY'].toString()),
+      );
+}
+
+class NodeReplacementRequestDto {
+  final String replacementNodeId;
+  final String? reason;
+  final bool transferCalibration;
+
+  const NodeReplacementRequestDto({
+    required this.replacementNodeId,
+    this.reason,
+    this.transferCalibration = true,
+  });
+
+  JsonMap toJson() => {
+        'replacementNodeId': replacementNodeId,
+        if (reason != null) 'reason': reason,
+        'transferCalibration': transferCalibration,
+      };
+
+  factory NodeReplacementRequestDto.fromJson(JsonMap json) =>
+      NodeReplacementRequestDto(
+        replacementNodeId: json['replacementNodeId']?.toString() ?? '',
+        reason: json['reason']?.toString(),
+        transferCalibration: json['transferCalibration'] as bool? ?? true,
+      );
+}
+
+class NodeReplacementResultDto {
+  final String oldNodeId;
+  final String replacementNodeId;
+  final String fieldId;
+  final String zoneId;
+  final String? monitoringPointId;
+  final String replacedAt;
+  final String? reason;
+  final bool historicalMeasurementsPreserved;
+  final Esp32NodeDto updatedReplacementNode;
+  final Esp32NodeDto retiredNode;
+
+  const NodeReplacementResultDto({
+    required this.oldNodeId,
+    required this.replacementNodeId,
+    required this.fieldId,
+    required this.zoneId,
+    this.monitoringPointId,
+    required this.replacedAt,
+    this.reason,
+    this.historicalMeasurementsPreserved = true,
+    required this.updatedReplacementNode,
+    required this.retiredNode,
+  });
+
+  factory NodeReplacementResultDto.fromJson(JsonMap json) =>
+      NodeReplacementResultDto(
+        oldNodeId: json['oldNodeId']?.toString() ?? '',
+        replacementNodeId: json['replacementNodeId']?.toString() ?? '',
+        fieldId: json['fieldId']?.toString() ?? '',
+        zoneId: json['zoneId']?.toString() ?? '',
+        monitoringPointId: json['monitoringPointId']?.toString(),
+        replacedAt: json['replacedAt']?.toString() ??
+            DateTime.now().toIso8601String(),
+        reason: json['reason']?.toString(),
+        historicalMeasurementsPreserved:
+            json['historicalMeasurementsPreserved'] as bool? ?? true,
+        updatedReplacementNode: Esp32NodeDto.fromJson(
+          json['updatedReplacementNode'] as JsonMap? ?? {},
+        ),
+        retiredNode: Esp32NodeDto.fromJson(
+          json['retiredNode'] as JsonMap? ?? {},
+        ),
+      );
+
+  JsonMap toJson() => {
+        'oldNodeId': oldNodeId,
+        'replacementNodeId': replacementNodeId,
+        'fieldId': fieldId,
+        'zoneId': zoneId,
+        if (monitoringPointId != null) 'monitoringPointId': monitoringPointId,
+        'replacedAt': replacedAt,
+        if (reason != null) 'reason': reason,
+        'historicalMeasurementsPreserved': historicalMeasurementsPreserved,
+        'updatedReplacementNode': updatedReplacementNode.toJson(),
+        'retiredNode': retiredNode.toJson(),
       };
 }
 
@@ -568,5 +754,277 @@ class FieldTopologyDto {
         'nodes': nodes.map((n) => n.toJson()).toList(),
       };
 }
+
+class AutoIrrigationConfigDto {
+  final String systemId;
+  final bool isEnabled;
+  final int maxDurationMinutes;
+  final int minCooldownMinutes;
+  final int allowedHoursStart;
+  final int allowedHoursEnd;
+  final double targetFloodDepthCm;
+  final bool rainDelayEnabled;
+  final int rainDelayHours;
+  final double minConfidenceThreshold;
+  final String? updatedAt;
+  final String? updatedBy;
+
+  const AutoIrrigationConfigDto({
+    this.systemId = 'default',
+    this.isEnabled = false,
+    this.maxDurationMinutes = 45,
+    this.minCooldownMinutes = 60,
+    this.allowedHoursStart = 6,
+    this.allowedHoursEnd = 18,
+    this.targetFloodDepthCm = 5.0,
+    this.rainDelayEnabled = true,
+    this.rainDelayHours = 24,
+    this.minConfidenceThreshold = 0.75,
+    this.updatedAt,
+    this.updatedBy,
+  });
+
+  factory AutoIrrigationConfigDto.fromJson(JsonMap json) =>
+      AutoIrrigationConfigDto(
+        systemId: json['systemId']?.toString() ?? 'default',
+        isEnabled: json['isEnabled'] as bool? ?? false,
+        maxDurationMinutes:
+            (json['maxDurationMinutes'] as num?)?.toInt() ?? 45,
+        minCooldownMinutes:
+            (json['minCooldownMinutes'] as num?)?.toInt() ?? 60,
+        allowedHoursStart: (json['allowedHoursStart'] as num?)?.toInt() ?? 6,
+        allowedHoursEnd: (json['allowedHoursEnd'] as num?)?.toInt() ?? 18,
+        targetFloodDepthCm:
+            (json['targetFloodDepthCm'] as num?)?.toDouble() ?? 5.0,
+        rainDelayEnabled: json['rainDelayEnabled'] as bool? ?? true,
+        rainDelayHours: (json['rainDelayHours'] as num?)?.toInt() ?? 24,
+        minConfidenceThreshold:
+            (json['minConfidenceThreshold'] as num?)?.toDouble() ?? 0.75,
+        updatedAt: json['updatedAt']?.toString(),
+        updatedBy: json['updatedBy']?.toString(),
+      );
+
+  JsonMap toJson() => {
+        'systemId': systemId,
+        'isEnabled': isEnabled,
+        'maxDurationMinutes': maxDurationMinutes,
+        'minCooldownMinutes': minCooldownMinutes,
+        'allowedHoursStart': allowedHoursStart,
+        'allowedHoursEnd': allowedHoursEnd,
+        'targetFloodDepthCm': targetFloodDepthCm,
+        'rainDelayEnabled': rainDelayEnabled,
+        'rainDelayHours': rainDelayHours,
+        'minConfidenceThreshold': minConfidenceThreshold,
+        if (updatedAt != null) 'updatedAt': updatedAt,
+        if (updatedBy != null) 'updatedBy': updatedBy,
+      };
+}
+
+class AutoIrrigationStatusDto {
+  final String systemId;
+  final String state;
+  final String? activeCommandId;
+  final String? startedAt;
+  final int? targetDurationMinutes;
+  final String? cooldownUntil;
+  final String? lastEvaluationTime;
+  final String? lastEvaluationResult;
+  final String? lockoutReason;
+  final String? lockoutTimestamp;
+  final List<String> inhibitionReasons;
+
+  const AutoIrrigationStatusDto({
+    this.systemId = 'default',
+    this.state = 'disabled',
+    this.activeCommandId,
+    this.startedAt,
+    this.targetDurationMinutes,
+    this.cooldownUntil,
+    this.lastEvaluationTime,
+    this.lastEvaluationResult,
+    this.lockoutReason,
+    this.lockoutTimestamp,
+    this.inhibitionReasons = const [],
+  });
+
+  factory AutoIrrigationStatusDto.fromJson(JsonMap json) =>
+      AutoIrrigationStatusDto(
+        systemId: json['systemId']?.toString() ?? 'default',
+        state: json['state']?.toString() ?? 'disabled',
+        activeCommandId: json['activeCommandId']?.toString(),
+        startedAt: json['startedAt']?.toString(),
+        targetDurationMinutes:
+            (json['targetDurationMinutes'] as num?)?.toInt(),
+        cooldownUntil: json['cooldownUntil']?.toString(),
+        lastEvaluationTime: json['lastEvaluationTime']?.toString(),
+        lastEvaluationResult: json['lastEvaluationResult']?.toString(),
+        lockoutReason: json['lockoutReason']?.toString(),
+        lockoutTimestamp: json['lockoutTimestamp']?.toString(),
+        inhibitionReasons: (json['inhibitionReasons'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            const [],
+      );
+
+  JsonMap toJson() => {
+        'systemId': systemId,
+        'state': state,
+        if (activeCommandId != null) 'activeCommandId': activeCommandId,
+        if (startedAt != null) 'startedAt': startedAt,
+        if (targetDurationMinutes != null)
+          'targetDurationMinutes': targetDurationMinutes,
+        if (cooldownUntil != null) 'cooldownUntil': cooldownUntil,
+        if (lastEvaluationTime != null)
+          'lastEvaluationTime': lastEvaluationTime,
+        if (lastEvaluationResult != null)
+          'lastEvaluationResult': lastEvaluationResult,
+        if (lockoutReason != null) 'lockoutReason': lockoutReason,
+        if (lockoutTimestamp != null) 'lockoutTimestamp': lockoutTimestamp,
+        'inhibitionReasons': inhibitionReasons,
+      };
+}
+
+class ClearLockoutRequestDto {
+  final String systemId;
+  final String? resolutionNote;
+  final String? clearedBy;
+
+  const ClearLockoutRequestDto({
+    this.systemId = 'default',
+    this.resolutionNote,
+    this.clearedBy,
+  });
+
+  factory ClearLockoutRequestDto.fromJson(JsonMap json) =>
+      ClearLockoutRequestDto(
+        systemId: json['systemId']?.toString() ?? 'default',
+        resolutionNote: json['resolutionNote']?.toString(),
+        clearedBy: json['clearedBy']?.toString(),
+      );
+
+  JsonMap toJson() => {
+        'systemId': systemId,
+        if (resolutionNote != null) 'resolutionNote': resolutionNote,
+        if (clearedBy != null) 'clearedBy': clearedBy,
+      };
+}
+
+class IrrigationActorDto {
+  final String type;
+  final String id;
+  final String displayName;
+
+  const IrrigationActorDto({
+    required this.type,
+    required this.id,
+    required this.displayName,
+  });
+
+  factory IrrigationActorDto.fromJson(JsonMap json) => IrrigationActorDto(
+        type: json['type']?.toString() ?? 'system',
+        id: json['id']?.toString() ?? 'unknown',
+        displayName: json['displayName']?.toString() ?? 'Unknown Actor',
+      );
+
+  JsonMap toJson() => {
+        'type': type,
+        'id': id,
+        'displayName': displayName,
+      };
+}
+
+class IrrigationExecutionAuditLogDto {
+  final String id;
+  final String systemId;
+  final IrrigationActorDto actor;
+  final String action;
+  final String triggerContext;
+  final double? triggeringDepthCm;
+  final double? telemetryConfidenceScore;
+  final String? cropStage;
+  final int? targetDurationMinutes;
+  final int? actualDurationMinutes;
+  final String outcome;
+  final String timestamp;
+  final String? failureReason;
+
+  const IrrigationExecutionAuditLogDto({
+    required this.id,
+    this.systemId = 'default',
+    required this.actor,
+    required this.action,
+    required this.triggerContext,
+    this.triggeringDepthCm,
+    this.telemetryConfidenceScore,
+    this.cropStage,
+    this.targetDurationMinutes,
+    this.actualDurationMinutes,
+    required this.outcome,
+    required this.timestamp,
+    this.failureReason,
+  });
+
+  factory IrrigationExecutionAuditLogDto.fromJson(JsonMap json) =>
+      IrrigationExecutionAuditLogDto(
+        id: json['id']?.toString() ?? '',
+        systemId: json['systemId']?.toString() ?? 'default',
+        actor: IrrigationActorDto.fromJson(
+            json['actor'] as JsonMap? ?? const {}),
+        action: json['action']?.toString() ?? '',
+        triggerContext: json['triggerContext']?.toString() ?? '',
+        triggeringDepthCm: (json['triggeringDepthCm'] as num?)?.toDouble(),
+        telemetryConfidenceScore:
+            (json['telemetryConfidenceScore'] as num?)?.toDouble(),
+        cropStage: json['cropStage']?.toString(),
+        targetDurationMinutes:
+            (json['targetDurationMinutes'] as num?)?.toInt(),
+        actualDurationMinutes:
+            (json['actualDurationMinutes'] as num?)?.toInt(),
+        outcome: json['outcome']?.toString() ?? 'unknown',
+        timestamp: json['timestamp']?.toString() ??
+            DateTime.now().toIso8601String(),
+        failureReason: json['failureReason']?.toString(),
+      );
+
+  JsonMap toJson() => {
+        'id': id,
+        'systemId': systemId,
+        'actor': actor.toJson(),
+        'action': action,
+        'triggerContext': triggerContext,
+        if (triggeringDepthCm != null) 'triggeringDepthCm': triggeringDepthCm,
+        if (telemetryConfidenceScore != null)
+          'telemetryConfidenceScore': telemetryConfidenceScore,
+        if (cropStage != null) 'cropStage': cropStage,
+        if (targetDurationMinutes != null)
+          'targetDurationMinutes': targetDurationMinutes,
+        if (actualDurationMinutes != null)
+          'actualDurationMinutes': actualDurationMinutes,
+        'outcome': outcome,
+        'timestamp': timestamp,
+        if (failureReason != null) 'failureReason': failureReason,
+      };
+}
+
+class IrrigationAuditLogListDto {
+  final List<IrrigationExecutionAuditLogDto> items;
+
+  const IrrigationAuditLogListDto(this.items);
+
+  factory IrrigationAuditLogListDto.fromJson(Object? json) {
+    final rawItems = json is List
+        ? json
+        : json is JsonMap && json['items'] is List
+            ? json['items'] as List
+            : const [];
+    return IrrigationAuditLogListDto(
+      rawItems
+          .whereType<JsonMap>()
+          .map(IrrigationExecutionAuditLogDto.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
 
 

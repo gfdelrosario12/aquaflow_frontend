@@ -30,7 +30,7 @@ class ZoneContrastSummaryCard extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                'Monitoring Zones Breakdown (Q1–Q4)',
+                'Monitoring Zones Breakdown (${zones.length} Zones)',
                 style: theme.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -93,21 +93,43 @@ class ZoneContrastSummaryCard extends StatelessWidget {
           ),
         ],
         const SizedBox(height: AppDimensions.spaceSm),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: AppDimensions.spaceSm,
-            mainAxisSpacing: AppDimensions.spaceSm,
-            childAspectRatio: 1.25,
-          ),
-          itemCount: zones.length,
-          itemBuilder: (context, index) {
-            final zone = zones[index];
-            final isWetter = zone.code == summary.wetterZoneCode;
-            final isDrier = zone.code == summary.drierZoneCode;
-            return _buildZoneItem(context, zone, isWetter, isDrier);
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            int crossAxisCount;
+            double childAspectRatio;
+
+            if (width < 380) {
+              crossAxisCount = zones.length == 1 ? 1 : 2;
+              childAspectRatio = zones.length == 1 ? 2.2 : 1.25;
+            } else if (width < 600) {
+              crossAxisCount = zones.length == 1 ? 1 : 2;
+              childAspectRatio = zones.length == 1 ? 2.4 : 1.28;
+            } else if (width < 900) {
+              crossAxisCount = zones.length <= 2 ? zones.length : 3;
+              childAspectRatio = 1.35;
+            } else {
+              crossAxisCount = zones.length <= 3 ? zones.length : 4;
+              childAspectRatio = 1.45;
+            }
+
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: AppDimensions.spaceSm,
+                mainAxisSpacing: AppDimensions.spaceSm,
+                childAspectRatio: childAspectRatio,
+              ),
+              itemCount: zones.length,
+              itemBuilder: (context, index) {
+                final zone = zones[index];
+                final isWetter = zone.code == summary.wetterZoneCode;
+                final isDrier = zone.code == summary.drierZoneCode;
+                return _buildZoneItem(context, zone, isWetter, isDrier);
+              },
+            );
           },
         ),
       ],
@@ -214,9 +236,6 @@ class ZoneContrastSummaryCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Water: ${zone.waterLevelCm}cm',
-                style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
               Expanded(
                 child: Text(
                   'Water: ${zone.waterLevelCm}cm',

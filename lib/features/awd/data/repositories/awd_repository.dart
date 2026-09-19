@@ -49,10 +49,9 @@ class AwdRepositoryImpl implements AwdRepository {
     );
 
     if (mockState == AwdMockState.insufficientData) {
-      // Simulate only 2 zones returning telemetry
-      final subsetZones = zones.take(2).toList();
+      // Simulate zero zones reporting telemetry
       return AwdRuleEngine.evaluateFieldAwd(
-        zones: subsetZones,
+        zones: const [],
         config: config,
         isStaleData: false,
       );

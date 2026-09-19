@@ -9,6 +9,8 @@ enum RealtimeEventType {
   nodeStatus,
   transmissionIntervalUpdated,
   nodeDiscovered,
+  nodeLifecycleUpdated,
+  nodeReplaced,
 }
 
 class RealtimeValidationException implements Exception {
@@ -97,7 +99,9 @@ class RealtimeEvent {
     if (type == RealtimeEventType.measurement ||
         type == RealtimeEventType.sensorStatus ||
         type == RealtimeEventType.nodeStatus ||
-        type == RealtimeEventType.transmissionIntervalUpdated) {
+        type == RealtimeEventType.transmissionIntervalUpdated ||
+        type == RealtimeEventType.nodeLifecycleUpdated ||
+        type == RealtimeEventType.nodeReplaced) {
       if (!isMonitoringScope) {
         throw RealtimeValidationException(
       '${type.name} events require valid monitoring or node scope.',
@@ -142,6 +146,12 @@ class RealtimeEvent {
       case 'node_discovered':
       case 'nodeDiscovered':
         return RealtimeEventType.nodeDiscovered;
+      case 'node_lifecycle_updated':
+      case 'nodeLifecycleUpdated':
+        return RealtimeEventType.nodeLifecycleUpdated;
+      case 'node_replaced':
+      case 'nodeReplaced':
+        return RealtimeEventType.nodeReplaced;
       default:
         throw RealtimeValidationException('Unsupported event type: $value.');
     }

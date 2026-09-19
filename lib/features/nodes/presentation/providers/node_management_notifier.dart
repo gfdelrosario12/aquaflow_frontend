@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/api/api_dtos.dart';
 import '../../../../core/realtime/realtime_coordinator.dart';
 import '../../../../core/realtime/realtime_events.dart';
+import '../../../control/domain/models/control_enums.dart';
 import '../../data/repositories/node_repository.dart';
 import '../../domain/models/models.dart';
 
@@ -14,6 +15,7 @@ class NodeManagementStateData {
   final String? errorMessage;
   final Esp32Node? selectedNode;
   final String? selectedZoneFilter;
+  final ControlUserRole userRole;
 
   const NodeManagementStateData({
     this.nodes = const [],
@@ -23,6 +25,7 @@ class NodeManagementStateData {
     this.errorMessage,
     this.selectedNode,
     this.selectedZoneFilter,
+    this.userRole = ControlUserRole.operator,
   });
 
   int get totalNodes => nodes.length;
@@ -30,6 +33,9 @@ class NodeManagementStateData {
   int get offlineCount => nodes.where((n) => !n.isOnline).length;
   int get adaptiveCount =>
       nodes.where((n) => n.transmissionConfig.isAdaptive).length;
+
+  bool get isAuthorizedForMutation =>
+      userRole == ControlUserRole.admin || userRole == ControlUserRole.operator;
 
   List<Esp32Node> get filteredNodes {
     if (selectedZoneFilter == null) return nodes;
@@ -50,6 +56,7 @@ class NodeManagementStateData {
     bool clearSelectedNode = false,
     String? selectedZoneFilter,
     bool clearZoneFilter = false,
+    ControlUserRole? userRole,
   }) {
     return NodeManagementStateData(
       nodes: nodes ?? this.nodes,
@@ -61,6 +68,7 @@ class NodeManagementStateData {
           clearSelectedNode ? null : (selectedNode ?? this.selectedNode),
       selectedZoneFilter:
           clearZoneFilter ? null : (selectedZoneFilter ?? this.selectedZoneFilter),
+      userRole: userRole ?? this.userRole,
     );
   }
 }
@@ -145,7 +153,31 @@ class NodeManagementNotifier extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> registerNode(NodeRegistrationRequestDto request) async {
+  void setUserRole(ControlUserRole role) {
+    _state = _state.copyWith(userRole: role);
+    notifyListeners();
+  }
+
+  bool _checkAuthorized(ControlUserRole? role, String actionDescription) {
+    final effectiveRole = role ?? _state.userRole;
+    if (effectiveRole == ControlUserRole.viewer) {
+      _state = _state.copyWith(
+        errorMessage: 'Unauthorized: Viewers cannot $actionDescription.',
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> registerNode(
+    NodeRegistrationRequestDto request, {
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'register sensor nodes')) {
+      return false;
+    }
     _state = _state.copyWith(isSubmitting: true, clearError: true);
     notifyListeners();
     try {
@@ -174,8 +206,12 @@ class NodeManagementNotifier extends ChangeNotifier {
 
   Future<bool> assignSpatial(
     String nodeId,
-    NodeSpatialAssignmentDto assignment,
-  ) async {
+    NodeSpatialAssignmentDto assignment, {
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'assign spatial coordinates')) {
+      return false;
+    }
     _state = _state.copyWith(isSubmitting: true, clearError: true);
     notifyListeners();
     try {
@@ -206,7 +242,11 @@ class NodeManagementNotifier extends ChangeNotifier {
     int intervalSeconds, {
     bool isAdaptive = false,
     String? reason,
+    ControlUserRole? userRole,
   }) async {
+    if (!_checkAuthorized(userRole, 'configure transmission intervals')) {
+      return false;
+    }
     _state = _state.copyWith(isSubmitting: true, clearError: true);
     notifyListeners();
     try {
@@ -237,6 +277,256 @@ class NodeManagementNotifier extends ChangeNotifier {
       _state = _state.copyWith(
         isSubmitting: false,
         errorMessage: 'Interval configuration failed: $e',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> transitionLifecycle(
+    String nodeId,
+    NodeLifecycleStatus targetStatus, {
+    String? reason,
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'modify node lifecycle state')) {
+      return false;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final updatedNode = await _repository.transitionLifecycle(
+        nodeId: nodeId,
+        targetStatus: targetStatus,
+        reason: reason,
+      );
+      final updatedNodes = _state.nodes.map((n) {
+        return n.id == nodeId ? updatedNode : n;
+      }).toList();
+      _state = _state.copyWith(
+        nodes: updatedNodes,
+        selectedNode: _state.selectedNode?.id == nodeId
+            ? updatedNode
+            : _state.selectedNode,
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Lifecycle transition failed: $e',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<NodeReplacementResult?> executeNodeReplacement(
+    String targetNodeId,
+    NodeReplacementRequestDto request, {
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'replace sensor nodes')) {
+      return null;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final result = await _repository.executeNodeReplacement(
+        oldNodeId: targetNodeId,
+        replacementNodeId: request.replacementNodeId,
+        reason: request.reason,
+        transferCalibration: request.transferCalibration,
+      );
+      final updatedNodes = _state.nodes.map((n) {
+        if (n.id == result.replacedNode.id) return result.replacedNode;
+        if (n.id == result.activeNode.id) return result.activeNode;
+        return n;
+      }).toList();
+
+      if (!updatedNodes.any((n) => n.id == result.activeNode.id)) {
+        updatedNodes.add(result.activeNode);
+      }
+
+      _state = _state.copyWith(
+        nodes: updatedNodes,
+        selectedNode: _state.selectedNode?.id == targetNodeId
+            ? result.activeNode
+            : (_state.selectedNode?.id == result.activeNode.id
+                ? result.activeNode
+                : _state.selectedNode),
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Node replacement failed: $e',
+      );
+      notifyListeners();
+      return null;
+    }
+  }
+
+  Future<bool> replaceNode(
+    String oldNodeId,
+    String newNodeId, {
+    String? reason,
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'replace sensor nodes')) {
+      return false;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final activeNode = await _repository.replaceNode(
+        oldNodeId: oldNodeId,
+        newNodeId: newNodeId,
+      );
+      await fetchNodes();
+      _state = _state.copyWith(
+        selectedNode: activeNode,
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Node replacement failed: $e',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> provisionNode(
+    String nodeId,
+    NodeProvisioningRequestDto request, {
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'provision sensor nodes')) {
+      return false;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final provisioned = await _repository.provisionNode(
+        nodeId: nodeId,
+        request: request,
+      );
+      final updatedNodes = _state.nodes.map((n) {
+        return n.id == nodeId ? provisioned : n;
+      }).toList();
+      if (!updatedNodes.any((n) => n.id == nodeId)) {
+        updatedNodes.add(provisioned);
+      }
+      _state = _state.copyWith(
+        nodes: updatedNodes,
+        selectedNode: _state.selectedNode?.id == nodeId
+            ? provisioned
+            : _state.selectedNode,
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Node provisioning failed: $e',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> decommissionNode(
+    String nodeId, {
+    String? reason,
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'decommission sensor nodes')) {
+      return false;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final success = await _repository.decommissionNode(nodeId);
+      if (success) {
+        final updatedNodes = _state.nodes.map((n) {
+          if (n.id == nodeId) {
+            return n.copyWith(
+              lifecycleStatus: NodeLifecycleStatus.decommissioned,
+              isOnline: false,
+            );
+          }
+          return n;
+        }).toList();
+        _state = _state.copyWith(
+          nodes: updatedNodes,
+          selectedNode: _state.selectedNode?.id == nodeId
+              ? _state.selectedNode?.copyWith(
+                  lifecycleStatus: NodeLifecycleStatus.decommissioned,
+                  isOnline: false,
+                )
+              : _state.selectedNode,
+          isSubmitting: false,
+        );
+      } else {
+        _state = _state.copyWith(isSubmitting: false);
+      }
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Node decommissioning failed: $e',
+      );
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> renameNode(
+    String nodeId,
+    String newLabel, {
+    ControlUserRole? userRole,
+  }) async {
+    if (!_checkAuthorized(userRole, 'rename sensor nodes')) {
+      return false;
+    }
+
+    _state = _state.copyWith(isSubmitting: true, clearError: true);
+    notifyListeners();
+    try {
+      final updatedNode = await _repository.updateNodeMetadata(
+        nodeId: nodeId,
+        displayName: newLabel,
+      );
+      final updatedNodes = _state.nodes.map((n) {
+        return n.id == nodeId ? updatedNode : n;
+      }).toList();
+      _state = _state.copyWith(
+        nodes: updatedNodes,
+        selectedNode: _state.selectedNode?.id == nodeId
+            ? updatedNode
+            : _state.selectedNode,
+        isSubmitting: false,
+      );
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _state = _state.copyWith(
+        isSubmitting: false,
+        errorMessage: 'Node rename failed: $e',
       );
       notifyListeners();
       return false;
@@ -340,6 +630,87 @@ class NodeManagementNotifier extends ChangeNotifier {
         );
         notifyListeners();
       }
+    } else if (event.type == RealtimeEventType.nodeLifecycleUpdated) {
+      final statusStr = payload['status']?.toString() ??
+          payload['lifecycleStatus']?.toString();
+      final newStatus = NodeLifecycleStatus.values
+          .cast<NodeLifecycleStatus?>()
+          .firstWhere(
+            (s) => s?.name.toLowerCase() == statusStr?.toLowerCase(),
+            orElse: () => null,
+          );
+
+      if (newStatus != null) {
+        final updatedNodes = _state.nodes.map((node) {
+          if (node.id == targetId || node.macAddress == targetId) {
+            return node.copyWith(
+              lifecycleStatus: newStatus,
+              isOnline: newStatus == NodeLifecycleStatus.active
+                  ? true
+                  : (newStatus.isRetired ? false : node.isOnline),
+              lastSeen: event.occurredAt,
+            );
+          }
+          return node;
+        }).toList();
+
+        _state = _state.copyWith(
+          nodes: updatedNodes,
+          selectedNode: (_state.selectedNode?.id == targetId ||
+                  _state.selectedNode?.macAddress == targetId)
+              ? _state.selectedNode?.copyWith(
+                  lifecycleStatus: newStatus,
+                  isOnline: newStatus == NodeLifecycleStatus.active
+                      ? true
+                      : (newStatus.isRetired
+                          ? false
+                          : _state.selectedNode?.isOnline),
+                  lastSeen: event.occurredAt,
+                )
+              : _state.selectedNode,
+        );
+        notifyListeners();
+      }
+    } else if (event.type == RealtimeEventType.nodeReplaced) {
+      final oldId = payload['oldNodeId']?.toString() ??
+          payload['targetNodeId']?.toString() ??
+          targetId;
+      final newId = payload['newNodeId']?.toString() ??
+          payload['replacementNodeId']?.toString() ??
+          payload['activeNodeId']?.toString();
+      final zoneId = payload['zoneId']?.toString() ??
+          payload['monitoringPointId']?.toString();
+
+      final updatedNodes = _state.nodes.map((node) {
+        if (node.id == oldId) {
+          return node.copyWith(
+            lifecycleStatus: NodeLifecycleStatus.replaced,
+            replacedByNodeId: newId,
+            replacedAt: event.occurredAt,
+            isOnline: false,
+          );
+        }
+        if (node.id == newId) {
+          return node.copyWith(
+            lifecycleStatus: NodeLifecycleStatus.active,
+            replacesNodeId: oldId,
+            assignedZoneId: zoneId ?? node.assignedZoneId,
+            isOnline: true,
+          );
+        }
+        return node;
+      }).toList();
+
+      _state = _state.copyWith(nodes: updatedNodes);
+      if (_state.selectedNode?.id == oldId && newId != null) {
+        final replacementNode = updatedNodes
+            .cast<Esp32Node?>()
+            .firstWhere((n) => n?.id == newId, orElse: () => null);
+        if (replacementNode != null) {
+          _state = _state.copyWith(selectedNode: replacementNode);
+        }
+      }
+      notifyListeners();
     }
   }
 

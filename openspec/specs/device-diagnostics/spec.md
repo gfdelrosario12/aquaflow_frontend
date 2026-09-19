@@ -1,15 +1,13 @@
 ## Purpose
 
 Provides health monitoring, telemetry link quality analysis, and diagnostic inspection across the four monitoring sensor nodes (Q1-Q4), the LoRaWAN gateway, and the centralized field irrigation controller for AquaSense.
-
 ## Requirements
-
 ### Requirement: Quad-zone monitoring node diagnostic inspection
-The system SHALL present individual diagnostic cards for monitoring nodes Q1, Q2, Q3, and Q4 detailing online/offline state, battery voltage and percentage, RSSI, SNR, last seen timestamp, last telemetry measurement, communication status, and health status (`Healthy`, `Degraded`, `Offline`, `Stale`, or `Error`).
+The system SHALL present individual diagnostic cards for all configured and discovered sensor nodes detailing online/offline state, battery voltage and percentage, RSSI, SNR, last seen timestamp, last telemetry measurement, communication status, and health status (`Healthy`, `Degraded`, `Offline`, `Stale`, or `Error`), supporting any number of deployed nodes.
 
 #### Scenario: Inspecting monitoring node telemetry health
 - **WHEN** the user opens the Device Diagnostics screen
-- **THEN** diagnostic metrics (battery, RSSI, SNR, last seen, last measurement, and health badge) are displayed for each quadrant node Q1-Q4.
+- **THEN** diagnostic metrics (battery, RSSI, SNR, last seen, last measurement, and health badge) are displayed for all registered sensor nodes.
 
 ### Requirement: Field LoRaWAN Gateway health diagnostics
 The system SHALL display connectivity status, last communication timestamp, uplink/downlink network packet stats, backhaul status, and health state for the field LoRaWAN gateway.
@@ -26,10 +24,10 @@ The system SHALL display connectivity state, main pump status, distribution valv
 - **THEN** controller online/offline state, main pump state, valve state, last command execution result, and target `ENTIRE FIELD` are displayed.
 
 ### Requirement: Strict isolation of monitoring nodes from irrigation controls
-The system MUST maintain clear diagnostic separation between telemetry monitoring nodes (Q1-Q4) and the central irrigation controller, strictly excluding any quadrant-level or zone-specific irrigation control actions.
+The system MUST maintain clear diagnostic separation between telemetry monitoring nodes and the central irrigation controller, strictly excluding any node-level or zone-specific irrigation control actions.
 
 #### Scenario: Verifying read-only nature of monitoring node diagnostics
-- **WHEN** the user inspects diagnostic details for monitoring nodes Q1, Q2, Q3, or Q4
+- **WHEN** the user inspects diagnostic details for any monitoring node
 - **THEN** telemetry diagnostic parameters are presented as strictly read-only health metrics with zero pump/valve activation controls.
 
 ### Requirement: Standardized diagnostic health state management
@@ -52,3 +50,4 @@ The system SHALL provide an authorized action trigger within the device diagnost
 #### Scenario: Opening interval configuration from diagnostics
 - **WHEN** an authorized user taps "Configure Transmission Interval" in the device detail inspector
 - **THEN** an interval configuration dialog opens showing current interval presets and adaptive mode options.
+

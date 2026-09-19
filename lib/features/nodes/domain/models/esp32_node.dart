@@ -4,6 +4,7 @@ import 'spatial_coordinates.dart';
 import 'transmission_config.dart';
 
 /// Represents an operational or discovered physical ESP32 IoT node in AquaSense.
+/// Represents an operational, discovered, or lifecycle-managed physical ESP32 IoT node in AquaSense.
 class Esp32Node {
   final String id;
   final String macAddress;
@@ -14,7 +15,7 @@ class Esp32Node {
   final SpatialCoordinates? coordinates;
   final TransmissionConfig transmissionConfig;
   final bool isOnline;
-  final NodeLifecycleState lifecycleState;
+  final NodeLifecycleStatus lifecycleState;
   final String hardwareRevision;
   final String firmwareVersion;
   final int? batteryPercent;
@@ -23,6 +24,13 @@ class Esp32Node {
   final double? snrDb;
   final DateTime lastSeen;
   final List<Sensor> sensors;
+
+  // Lifecycle audit and commissioning metadata
+  final String? commissioningToken;
+  final String? replacedByNodeId;
+  final String? replacesNodeId;
+  final DateTime? replacedAt;
+  final DateTime? commissionedAt;
 
   // Direct cached readings for performance and backward compatibility
   final double? _soilMoisturePercent;
@@ -40,7 +48,7 @@ class Esp32Node {
     this.coordinates,
     required this.transmissionConfig,
     required this.isOnline,
-    this.lifecycleState = NodeLifecycleState.active,
+    this.lifecycleState = NodeLifecycleStatus.active,
     this.hardwareRevision = 'v2.1',
     this.firmwareVersion = '1.0.0',
     this.batteryPercent,
@@ -49,6 +57,11 @@ class Esp32Node {
     this.snrDb,
     required this.lastSeen,
     this.sensors = const [],
+    this.commissioningToken,
+    this.replacedByNodeId,
+    this.replacesNodeId,
+    this.replacedAt,
+    this.commissionedAt,
     double? soilMoisturePercent,
     double? waterLevelCm,
     double? temperatureCelsius,
@@ -57,6 +70,8 @@ class Esp32Node {
         _waterLevelCm = waterLevelCm,
         _temperatureCelsius = temperatureCelsius,
         _humidityPercent = humidityPercent;
+
+  NodeLifecycleStatus get lifecycleStatus => lifecycleState;
 
   double? get soilMoisturePercent {
     if (_soilMoisturePercent != null) return _soilMoisturePercent;
@@ -98,6 +113,9 @@ class Esp32Node {
     return null;
   }
 
+  bool get isRetired => lifecycleState.isRetired;
+  bool get isTerminal => lifecycleState.isTerminal;
+
   Esp32Node copyWith({
     String? id,
     String? macAddress,
@@ -108,7 +126,8 @@ class Esp32Node {
     SpatialCoordinates? coordinates,
     TransmissionConfig? transmissionConfig,
     bool? isOnline,
-    NodeLifecycleState? lifecycleState,
+    NodeLifecycleStatus? lifecycleState,
+    NodeLifecycleStatus? lifecycleStatus,
     String? hardwareRevision,
     String? firmwareVersion,
     int? batteryPercent,
@@ -117,6 +136,11 @@ class Esp32Node {
     double? snrDb,
     DateTime? lastSeen,
     List<Sensor>? sensors,
+    String? commissioningToken,
+    String? replacedByNodeId,
+    String? replacesNodeId,
+    DateTime? replacedAt,
+    DateTime? commissionedAt,
     double? soilMoisturePercent,
     double? waterLevelCm,
     double? temperatureCelsius,
@@ -132,7 +156,7 @@ class Esp32Node {
       coordinates: coordinates ?? this.coordinates,
       transmissionConfig: transmissionConfig ?? this.transmissionConfig,
       isOnline: isOnline ?? this.isOnline,
-      lifecycleState: lifecycleState ?? this.lifecycleState,
+      lifecycleState: lifecycleStatus ?? lifecycleState ?? this.lifecycleState,
       hardwareRevision: hardwareRevision ?? this.hardwareRevision,
       firmwareVersion: firmwareVersion ?? this.firmwareVersion,
       batteryPercent: batteryPercent ?? this.batteryPercent,
@@ -141,11 +165,103 @@ class Esp32Node {
       snrDb: snrDb ?? this.snrDb,
       lastSeen: lastSeen ?? this.lastSeen,
       sensors: sensors ?? this.sensors,
+      commissioningToken: commissioningToken ?? this.commissioningToken,
+      replacedByNodeId: replacedByNodeId ?? this.replacedByNodeId,
+      replacesNodeId: replacesNodeId ?? this.replacesNodeId,
+      replacedAt: replacedAt ?? this.replacedAt,
+      commissionedAt: commissionedAt ?? this.commissionedAt,
       soilMoisturePercent: soilMoisturePercent ?? this.soilMoisturePercent,
       waterLevelCm: waterLevelCm ?? this.waterLevelCm,
       temperatureCelsius: temperatureCelsius ?? this.temperatureCelsius,
       humidityPercent: humidityPercent ?? this.humidityPercent,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'macAddress': macAddress,
+        'displayName': displayName,
+        if (assignedFieldId != null) 'assignedFieldId': assignedFieldId,
+        if (assignedZoneId != null) 'assignedZoneId': assignedZoneId,
+        if (assignedPointId != null) 'assignedPointId': assignedPointId,
+        if (coordinates != null) 'coordinates': coordinates!.toJson(),
+        'transmissionConfig': transmissionConfig.toJson(),
+        'isOnline': isOnline,
+        'lifecycleState': lifecycleState.name,
+        'hardwareRevision': hardwareRevision,
+        'firmwareVersion': firmwareVersion,
+        if (batteryPercent != null) 'batteryPercent': batteryPercent,
+        if (batteryVoltage != null) 'batteryVoltage': batteryVoltage,
+        if (rssiDbm != null) 'rssiDbm': rssiDbm,
+        if (snrDb != null) 'snrDb': snrDb,
+        'lastSeen': lastSeen.toIso8601String(),
+        'sensors': sensors.map((s) => s.toJson()).toList(),
+        if (commissioningToken != null) 'commissioningToken': commissioningToken,
+        if (replacedByNodeId != null) 'replacedByNodeId': replacedByNodeId,
+        if (replacesNodeId != null) 'replacesNodeId': replacesNodeId,
+        if (replacedAt != null) 'replacedAt': replacedAt!.toIso8601String(),
+        if (commissionedAt != null)
+          'commissionedAt': commissionedAt!.toIso8601String(),
+        if (_soilMoisturePercent != null)
+          'soilMoisturePercent': _soilMoisturePercent,
+        if (_waterLevelCm != null) 'waterLevelCm': _waterLevelCm,
+        if (_temperatureCelsius != null)
+          'temperatureCelsius': _temperatureCelsius,
+        if (_humidityPercent != null) 'humidityPercent': _humidityPercent,
+      };
+
+  factory Esp32Node.fromJson(Map<String, dynamic> json) {
+    return Esp32Node(
+      id: json['id'] as String,
+      macAddress: json['macAddress'] as String,
+      displayName: json['displayName'] as String? ?? 'ESP32 Node',
+      assignedFieldId: json['assignedFieldId'] as String?,
+      assignedZoneId: json['assignedZoneId'] as String?,
+      assignedPointId: json['assignedPointId'] as String?,
+      coordinates: json['coordinates'] != null
+          ? SpatialCoordinates.fromJson(
+              json['coordinates'] as Map<String, dynamic>,
+            )
+          : null,
+      transmissionConfig: json['transmissionConfig'] != null
+          ? TransmissionConfig.fromJson(
+              json['transmissionConfig'] as Map<String, dynamic>,
+            )
+          : const TransmissionConfig(),
+      isOnline: json['isOnline'] as bool? ?? false,
+      lifecycleState: NodeLifecycleStatus.values.firstWhere(
+        (e) => e.name == json['lifecycleState'],
+        orElse: () => NodeLifecycleStatus.active,
+      ),
+      hardwareRevision: json['hardwareRevision'] as String? ?? 'v2.1',
+      firmwareVersion: json['firmwareVersion'] as String? ?? '1.0.0',
+      batteryPercent: json['batteryPercent'] as int?,
+      batteryVoltage: (json['batteryVoltage'] as num?)?.toDouble(),
+      rssiDbm: json['rssiDbm'] as int?,
+      snrDb: (json['snrDb'] as num?)?.toDouble(),
+      lastSeen: json['lastSeen'] != null
+          ? DateTime.parse(json['lastSeen'] as String)
+          : DateTime.now(),
+      sensors: (json['sensors'] as List<dynamic>?)
+              ?.map((s) => Sensor.fromJson(s as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      commissioningToken: json['commissioningToken'] as String?,
+      replacedByNodeId: json['replacedByNodeId'] as String?,
+      replacesNodeId: json['replacesNodeId'] as String?,
+      replacedAt: json['replacedAt'] != null
+          ? DateTime.parse(json['replacedAt'] as String)
+          : null,
+      commissionedAt: json['commissionedAt'] != null
+          ? DateTime.parse(json['commissionedAt'] as String)
+          : null,
+      soilMoisturePercent: (json['soilMoisturePercent'] as num?)?.toDouble(),
+      waterLevelCm: (json['waterLevelCm'] as num?)?.toDouble(),
+      temperatureCelsius: (json['temperatureCelsius'] as num?)?.toDouble(),
+      humidityPercent: (json['humidityPercent'] as num?)?.toDouble(),
+    );
+  }
 }
 
+/// Domain alias representing a physical sensor node hardware device in field topology.
+typedef SensorNode = Esp32Node;

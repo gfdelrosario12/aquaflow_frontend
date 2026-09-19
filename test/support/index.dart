@@ -2,6 +2,7 @@
 ///
 /// Import this file in tests to get access to all support utilities:
 ///   import 'support/index.dart';
+library;
 
 export 'fakes.dart';
 export 'responsive.dart';

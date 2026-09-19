@@ -6,19 +6,22 @@ MonitoringZone sampleZone({
   double soilMoisturePercent = 55.0,
   bool isOnline = true,
   List<double>? history,
+  DateTime? lastUpdated,
+  double spatialWeight = 0.25,
 }) {
   final hist = history ?? const [5.0, 5.0, 5.0];
   return MonitoringZone(
     id: 'zone-$code',
     code: code,
     name: 'Monitoring $code',
+    spatialWeight: spatialWeight,
     soilMoisturePercent: soilMoisturePercent,
     waterLevelCm: waterLevelCm,
     temperatureCelsius: 28.0,
     humidityPercent: 70.0,
     batteryPercent: 80,
     status: isOnline ? ZoneStatus.optimal : ZoneStatus.offline,
-    lastUpdated: DateTime.now(),
+    lastUpdated: lastUpdated ?? DateTime.now(),
     isOnline: isOnline,
     rssiDbm: -70,
     snrDb: 8.0,

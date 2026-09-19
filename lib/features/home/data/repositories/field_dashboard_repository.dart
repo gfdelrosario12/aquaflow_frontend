@@ -1,6 +1,10 @@
 import '../../domain/models/field_alert.dart';
 import '../../domain/models/field_dashboard_summary.dart';
 import '../../domain/models/field_recommendation.dart';
+import '../../../awd/domain/models/awd_analytics_summary.dart';
+import '../../../awd/domain/models/awd_threshold_config.dart';
+import '../../../awd/domain/models/crop_growth_stage.dart';
+import '../../../awd/domain/services/awd_rule_engine.dart';
 import '../../../irrigation/data/repositories/irrigation_repository.dart';
 import '../../../irrigation/domain/models/centralized_irrigation.dart';
 import '../../../zones/data/repositories/zone_repository.dart';
@@ -101,7 +105,7 @@ class FieldDashboardRepositoryImpl implements FieldDashboardRepository {
         : 'Safe AWD Drying';
 
     final actionText = needsWater
-        ? 'Activate centralized irrigation to supply drier quadrant ${drierZone.code}.'
+        ? 'Activate centralized irrigation to supply drier zone ${drierZone.code}.'
         : 'No immediate irrigation required. Maintain current AWD monitoring.';
 
     final alerts = [
@@ -131,7 +135,7 @@ class FieldDashboardRepositoryImpl implements FieldDashboardRepository {
           id: 'rec-1',
           title: 'Run Centralized Irrigation Pulse',
           description:
-              'Quadrants ${drierZone.code} and others require moisture replenishment. Run the central pump for 45–60 mins.',
+              'Zone ${drierZone.code} and others require moisture replenishment. Run the central pump for 45–60 mins.',
           urgency: RecommendationUrgency.high,
           actionType: ActionableType.startCentralIrrigation,
           recommendedDurationMinutes: 60,
@@ -141,11 +145,35 @@ class FieldDashboardRepositoryImpl implements FieldDashboardRepository {
           id: 'rec-2',
           title: 'Maintain AWD Soil Aeration',
           description:
-              'Overall moisture balance across Q1–Q4 is within optimal range. Continue observation.',
+              'Overall moisture balance across all monitoring zones is within optimal range. Continue observation.',
           urgency: RecommendationUrgency.low,
           actionType: ActionableType.noActionNeeded,
         ),
     ];
+
+    final confidence = AwdRuleEngine.calculateConfidence(zones, now: lastUpdated);
+    final fieldAwdStatus = condition == FieldConditionStatus.flooded
+        ? FieldAwdStatus.flooded
+        : (condition == FieldConditionStatus.criticallyDry
+            ? FieldAwdStatus.criticalDryness
+            : (needsWater ? FieldAwdStatus.refloodNeeded : FieldAwdStatus.safeDry));
+
+    final autoEligibility = AwdRuleEngine.evaluateAutomationEligibility(
+      fieldStatus: fieldAwdStatus,
+      averageWaterDepthCm: zones.isNotEmpty
+          ? zones.map((z) => z.waterLevelCm).reduce((a, b) => a + b) /
+              zones.length
+          : 0.0,
+      minWaterDepthCm: zones.isNotEmpty
+          ? zones.map((z) => z.waterLevelCm).reduce((a, b) => a < b ? a : b)
+          : 0.0,
+      confidence: confidence,
+      isStaleData: mockState == MockState.stale,
+      hasConflictingConditions: false,
+      flaggedOutlierZoneCodes: const [],
+      config: const AwdThresholdConfig(cropStage: CropGrowthStage.vegetative),
+      now: lastUpdated,
+    );
 
     return FieldDashboardSummary(
       overallCondition: condition,
@@ -162,6 +190,8 @@ class FieldDashboardRepositoryImpl implements FieldDashboardRepository {
       activeAlerts: alerts,
       recommendations: recommendations,
       forceStale: mockState == MockState.stale,
+      confidence: confidence,
+      autoEligibility: autoEligibility,
     );
   }
 }

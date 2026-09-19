@@ -3,14 +3,24 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../irrigation/domain/models/auto_irrigation_config.dart';
+import '../../irrigation/domain/models/auto_irrigation_status.dart';
+import '../../irrigation/presentation/providers/irrigation_notifier.dart';
 import '../domain/models/models.dart';
 import 'providers/central_control_provider.dart';
+import 'widgets/auto_irrigation_config_dialog.dart';
 import 'widgets/control_confirmation_dialog.dart';
+import 'widgets/irrigation_audit_log_section.dart';
 
 class ControlScreen extends StatefulWidget {
   final CentralControlNotifier? notifier;
+  final IrrigationNotifier? irrigationNotifier;
 
-  const ControlScreen({super.key, this.notifier});
+  const ControlScreen({
+    super.key,
+    this.notifier,
+    this.irrigationNotifier,
+  });
 
   @override
   State<ControlScreen> createState() => _ControlScreenState();
@@ -18,12 +28,16 @@ class ControlScreen extends StatefulWidget {
 
 class _ControlScreenState extends State<ControlScreen> {
   late CentralControlNotifier _notifier;
+  late IrrigationNotifier _irrigationNotifier;
 
   @override
   void initState() {
     super.initState();
     _notifier = widget.notifier ?? CentralControlNotifier();
     _notifier.addListener(_onStateChanged);
+    _irrigationNotifier = widget.irrigationNotifier ?? IrrigationNotifier();
+    _irrigationNotifier.addListener(_onStateChanged);
+    _irrigationNotifier.loadAutoIrrigationData();
   }
 
   void _onStateChanged() {
@@ -38,6 +52,11 @@ class _ControlScreenState extends State<ControlScreen> {
       _notifier.dispose();
     } else {
       _notifier.removeListener(_onStateChanged);
+    }
+    if (widget.irrigationNotifier == null) {
+      _irrigationNotifier.dispose();
+    } else {
+      _irrigationNotifier.removeListener(_onStateChanged);
     }
     super.dispose();
   }
@@ -90,6 +109,45 @@ class _ControlScreenState extends State<ControlScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _handleConfigureAutomation() async {
+    final updated = await AutoIrrigationConfigDialog.show(
+      context,
+      _irrigationNotifier.state.config,
+    );
+    if (updated != null) {
+      final ok = await _irrigationNotifier.updateConfig(updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok
+                ? 'Automation configuration updated.'
+                : 'Failed to update configuration.'),
+            backgroundColor: ok ? AppColors.primary : AppColors.alertError,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleClearLockout() async {
+    final ok = await _irrigationNotifier.clearFaultLockout(
+      clearedBy: _notifier.state.userRole.name,
+      resolutionNote: 'Cleared by operator via Control Screen',
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok
+              ? 'Fault lockout successfully cleared. Automation restored to standby.'
+              : 'Failed to clear fault lockout.'),
+          backgroundColor: ok ? AppColors.pumpActive : AppColors.alertError,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -162,6 +220,10 @@ class _ControlScreenState extends State<ControlScreen> {
             ),
             const SizedBox(height: AppDimensions.spaceMd),
 
+            // Automation Supervisor Card
+            _buildAutoSupervisorCard(),
+            const SizedBox(height: AppDimensions.spaceMd),
+
             // Fault Banners & Warnings
             _buildAlertBanners(state, telemetry),
 
@@ -181,14 +243,327 @@ class _ControlScreenState extends State<ControlScreen> {
 
             // Pipeline Telemetry & Architecture Card
             _buildTelemetryCard(telemetry),
+            const SizedBox(height: AppDimensions.spaceMd),
+
+            // Irrigation Execution Audit Log Section
+            IrrigationAuditLogSection(
+              auditLogs: _irrigationNotifier.state.auditLogs,
+              onRefresh: () => _irrigationNotifier.loadAutoIrrigationData(),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildAutoSupervisorCard() {
+    final theme = Theme.of(context);
+    final autoState = _irrigationNotifier.state;
+    final status = autoState.status;
+    final config = autoState.config;
+
+    Color badgeColor;
+    IconData badgeIcon;
+    switch (status.state) {
+      case AutoIrrigationState.disabled:
+        badgeColor = theme.hintColor;
+        badgeIcon = Icons.power_settings_new;
+        break;
+      case AutoIrrigationState.standby:
+        badgeColor = AppColors.primary;
+        badgeIcon = Icons.check_circle_outline;
+        break;
+      case AutoIrrigationState.evaluating:
+        badgeColor = Colors.orange.shade700;
+        badgeIcon = Icons.sync;
+        break;
+      case AutoIrrigationState.pendingAck:
+        badgeColor = Colors.amber.shade800;
+        badgeIcon = Icons.hourglass_top;
+        break;
+      case AutoIrrigationState.irrigating:
+        badgeColor = Colors.purple.shade600;
+        badgeIcon = Icons.smart_toy;
+        break;
+      case AutoIrrigationState.cooldown:
+        badgeColor = Colors.teal.shade700;
+        badgeIcon = Icons.timelapse;
+        break;
+      case AutoIrrigationState.faultLocked:
+        badgeColor = AppColors.alertError;
+        badgeIcon = Icons.lock;
+        break;
+    }
+
+    final remainingCooldown = status.remainingCooldown();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 480;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+            side: BorderSide(color: badgeColor.withValues(alpha: 0.3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppDimensions.spaceMd),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(badgeIcon, color: badgeColor, size: 22),
+                          const SizedBox(width: AppDimensions.spaceSm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Automation Supervisor',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'Centralized field-level autonomous control',
+                                  style: theme.textTheme.bodySmall,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: AppDimensions.spaceSm),
+                    // Supervisor State Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+                        border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: badgeColor,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            status.state.label.toUpperCase(),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: badgeColor,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.spaceSm),
+                const Divider(),
+                const SizedBox(height: AppDimensions.spaceSm),
+                // Details & Actions
+                if (isNarrow) ...[
+                  _buildSupervisorDetails(status, config, remainingCooldown, theme),
+                  const SizedBox(height: AppDimensions.spaceSm),
+                  Wrap(
+                    spacing: AppDimensions.spaceSm,
+                    runSpacing: AppDimensions.spaceSm,
+                    children: [
+                      if (status.isFaultLocked)
+                        FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
+                            foregroundColor: AppColors.alertError,
+                          ),
+                          icon: const Icon(Icons.lock_open, size: 16),
+                          label: const Text('Clear Lockout'),
+                          onPressed: _handleClearLockout,
+                        ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.tune, size: 16),
+                        label: const Text('Configure'),
+                        onPressed: _handleConfigureAutomation,
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: _buildSupervisorDetails(status, config, remainingCooldown, theme),
+                      ),
+                      const SizedBox(width: AppDimensions.spaceSm),
+                      Row(
+                        children: [
+                          if (status.isFaultLocked) ...[
+                            FilledButton.tonalIcon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
+                                foregroundColor: AppColors.alertError,
+                              ),
+                              icon: const Icon(Icons.lock_open, size: 16),
+                              label: const Text('Clear Lockout'),
+                              onPressed: _handleClearLockout,
+                            ),
+                            const SizedBox(width: AppDimensions.spaceSm),
+                          ],
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.tune, size: 16),
+                            label: const Text('Configure'),
+                            onPressed: _handleConfigureAutomation,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSupervisorDetails(
+    AutoIrrigationStatus status,
+    AutoIrrigationConfig config,
+    Duration? remainingCooldown,
+    ThemeData theme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (status.isInCooldown && remainingCooldown != null) ...[
+          Row(
+            children: [
+              const Icon(Icons.timer_outlined, size: 16, color: Colors.teal),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Cooldown Active: ${remainingCooldown.inMinutes}m ${remainingCooldown.inSeconds % 60}s remaining',
+                  style: const TextStyle(
+                    color: Colors.teal,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+        if (status.isActivelyIrrigating) ...[
+          Row(
+            children: [
+              Icon(Icons.play_circle_outline, size: 16, color: Colors.purple.shade600),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Auto-Irrigation In Progress (Target: ${status.targetDurationMinutes ?? config.maxDurationMinutes}m)',
+                  style: TextStyle(
+                    color: Colors.purple.shade600,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+        if (status.isFaultLocked) ...[
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.alertError),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Lockout: ${status.lockoutReason ?? "Hardware or ACK timeout"}',
+                  style: const TextStyle(
+                    color: AppColors.alertError,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+        ],
+        Text(
+          config.isEnabled
+              ? 'Window: ${config.allowedHoursStart.toString().padLeft(2, "0")}:00 - ${config.allowedHoursEnd.toString().padLeft(2, "0")}:00 • Max: ${config.maxDurationMinutes}m • Cooldown: ${config.minCooldownMinutes}m'
+              : 'Field automation is currently disabled by operator.',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
   Widget _buildAlertBanners(CentralControlStateData state, CentralControlTelemetry? telemetry) {
     final banners = <Widget>[];
+
+    final autoState = _irrigationNotifier.state;
+    final autoStatus = autoState.status;
+
+    if (autoStatus.isFaultLocked) {
+      banners.add(
+        _buildBannerItem(
+          icon: Icons.lock,
+          color: AppColors.alertError,
+          title: 'Automation Fault Locked',
+          message:
+              'Safety lockout engaged: ${autoStatus.lockoutReason ?? "Unacknowledged hardware/command failure"}. Remote automation paused until cleared.',
+        ),
+      );
+    }
+
+    if (autoStatus.isInCooldown) {
+      final remaining = autoStatus.remainingCooldown();
+      final remainingText = remaining != null
+          ? ' (${remaining.inMinutes}m ${remaining.inSeconds % 60}s remaining)'
+          : '';
+      banners.add(
+        _buildBannerItem(
+          icon: Icons.timelapse,
+          color: Colors.teal.shade700,
+          title: 'Soil Infiltration Cooldown Active$remainingText',
+          message:
+              'Centralized pump is cooling down to allow soil moisture absorption and prevent waterlogging.',
+        ),
+      );
+    }
+
+    if (autoStatus.isActivelyIrrigating) {
+      banners.add(
+        _buildBannerItem(
+          icon: Icons.smart_toy,
+          color: Colors.purple.shade600,
+          title: 'Automated AWD Irrigation In Progress',
+          message:
+              'Automated cycle initiated by AWD rule engine. Hardware watchdog timer is actively guarding pump shutoff.',
+        ),
+      );
+    }
 
     if (telemetry?.controllerState == CentralControllerState.offline) {
       banners.add(

@@ -79,7 +79,7 @@ class FieldHeaderOverviewCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'AquaSense Quadrant Monitoring',
+                      'AquaSense Monitoring Overview',
                       style: theme.textTheme.labelMedium?.copyWith(
                         color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
                       ),

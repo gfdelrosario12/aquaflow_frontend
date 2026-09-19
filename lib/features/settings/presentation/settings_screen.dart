@@ -255,7 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Icons.water_drop_outlined,
         ),
         Text(
-          'Settings does not configure Q1-Q4 irrigation behavior, pumps, or valves.',
+          'Settings does not configure zone-level irrigation behavior, pumps, or valves.',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],

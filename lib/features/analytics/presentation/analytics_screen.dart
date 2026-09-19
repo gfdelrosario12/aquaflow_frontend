@@ -56,7 +56,7 @@ class AnalyticsScreen extends StatelessWidget {
             _buildStatCardsRow(context),
             const SizedBox(height: AppDimensions.spaceLg),
             AquaChartContainer(
-              title: '24-Hour Soil Moisture Trend (Q1–Q4)',
+              title: '24-Hour Soil Moisture Trend Across Zones',
               subtitle: 'Average volumetric moisture percentage across field',
               trailingHeader: StatusBadge.zoneStatus('Optimal', compact: true),
               chartWidget: const SimulatedTelemetryChart(

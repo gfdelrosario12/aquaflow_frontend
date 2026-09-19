@@ -1,10 +1,13 @@
 /// Formal lifecycle states for physical IoT sensor nodes in AquaSense.
-enum NodeLifecycleState {
+enum NodeLifecycleStatus {
   /// Node has broadcast join/discovery beacons but is not yet commissioned.
   discovered,
 
   /// Node has been claimed and is undergoing spatial/datum configuration.
   provisioning,
+
+  /// Node has valid credentials and is ready for field deployment.
+  provisioned,
 
   /// Node is fully commissioned, assigned to a point, and streaming valid telemetry.
   active,
@@ -15,12 +18,109 @@ enum NodeLifecycleState {
   /// Node has missed multiple expected heartbeats and is unreachable.
   offline,
 
+  /// Node has been administratively disabled or suppressed due to malfunction.
+  disabled,
+
   /// Node has been permanently replaced by a newer hardware device at this point.
   replaced,
 
   /// Node has been retired and permanently removed from field operations.
-  decommissioned,
+  decommissioned;
+
+  /// Validates whether transitioning from this lifecycle state to [target] is permitted.
+  bool canTransitionTo(NodeLifecycleStatus target) {
+    if (this == target) return true;
+    switch (this) {
+      case NodeLifecycleStatus.discovered:
+        return target == NodeLifecycleStatus.provisioning ||
+            target == NodeLifecycleStatus.provisioned ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.provisioning:
+        return target == NodeLifecycleStatus.provisioned ||
+            target == NodeLifecycleStatus.active ||
+            target == NodeLifecycleStatus.disabled ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.provisioned:
+        return target == NodeLifecycleStatus.active ||
+            target == NodeLifecycleStatus.maintenance ||
+            target == NodeLifecycleStatus.disabled ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.active:
+        return target == NodeLifecycleStatus.maintenance ||
+            target == NodeLifecycleStatus.offline ||
+            target == NodeLifecycleStatus.disabled ||
+            target == NodeLifecycleStatus.replaced ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.maintenance:
+        return target == NodeLifecycleStatus.active ||
+            target == NodeLifecycleStatus.disabled ||
+            target == NodeLifecycleStatus.replaced ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.offline:
+        return target == NodeLifecycleStatus.active ||
+            target == NodeLifecycleStatus.maintenance ||
+            target == NodeLifecycleStatus.disabled ||
+            target == NodeLifecycleStatus.replaced ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.disabled:
+        return target == NodeLifecycleStatus.active ||
+            target == NodeLifecycleStatus.maintenance ||
+            target == NodeLifecycleStatus.replaced ||
+            target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.replaced:
+        return target == NodeLifecycleStatus.decommissioned;
+      case NodeLifecycleStatus.decommissioned:
+        return false;
+    }
+  }
+
+  /// Human-readable display label for UI representation.
+  String get label {
+    switch (this) {
+      case NodeLifecycleStatus.discovered:
+        return 'Discovered';
+      case NodeLifecycleStatus.provisioning:
+        return 'Provisioning';
+      case NodeLifecycleStatus.provisioned:
+        return 'Provisioned';
+      case NodeLifecycleStatus.active:
+        return 'Active';
+      case NodeLifecycleStatus.maintenance:
+        return 'Maintenance';
+      case NodeLifecycleStatus.offline:
+        return 'Offline';
+      case NodeLifecycleStatus.disabled:
+        return 'Disabled';
+      case NodeLifecycleStatus.replaced:
+        return 'Replaced';
+      case NodeLifecycleStatus.decommissioned:
+        return 'Decommissioned';
+    }
+  }
+
+  /// Asserts that transitioning to [target] is valid, throwing [StateError] otherwise.
+  void validateTransition(NodeLifecycleStatus target) {
+    if (!canTransitionTo(target)) {
+      throw StateError(
+        'Illegal node lifecycle transition from ${name.toUpperCase()} to ${target.name.toUpperCase()}',
+      );
+    }
+  }
+
+  /// Whether the node is in an operational state transmitting production telemetry.
+  bool get isOperable => this == NodeLifecycleStatus.active;
+
+  /// Whether the node is in an immutable terminal state.
+  bool get isTerminal => this == NodeLifecycleStatus.decommissioned;
+
+  /// Whether the node is retired from active duty.
+  bool get isRetired =>
+      this == NodeLifecycleStatus.replaced ||
+      this == NodeLifecycleStatus.decommissioned;
 }
+
+/// Backwards compatibility alias for `NodeLifecycleStatus`.
+typedef NodeLifecycleState = NodeLifecycleStatus;
 
 /// Transducer / sensing channel types supported by AquaSense sensor nodes.
 enum SensorType {

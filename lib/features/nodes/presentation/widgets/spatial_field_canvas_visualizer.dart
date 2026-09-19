@@ -102,6 +102,7 @@ class _SpatialFieldCanvasVisualizerState
                           widthMeters: state.fieldWidthMeters,
                           heightMeters: state.fieldHeightMeters,
                           isDark: theme.brightness == Brightness.dark,
+                          nodes: widget.nodes,
                         ),
                       ),
 
@@ -130,6 +131,31 @@ class _SpatialFieldCanvasVisualizerState
                           ),
                         );
                       }),
+
+                      // Dynamic Zone Count Legend (Top Right)
+                      if (widget.nodes.isNotEmpty)
+                        Positioned(
+                          top: 8,
+                          right: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.65),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${widget.nodes.map((n) => n.assignedZoneId).where((id) => id != null && id.isNotEmpty).toSet().length} Zones • ${widget.nodes.length} Nodes',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
 
                       // Origin & Scale Legend
                       Positioned(
@@ -392,12 +418,14 @@ class _FieldCanvasPainter extends CustomPainter {
   final double widthMeters;
   final double heightMeters;
   final bool isDark;
+  final List<Esp32Node> nodes;
 
   _FieldCanvasPainter({
     required this.showGridLines,
     required this.widthMeters,
     required this.heightMeters,
     required this.isDark,
+    this.nodes = const [],
   });
 
   @override
@@ -424,22 +452,56 @@ class _FieldCanvasPainter extends CustomPainter {
       }
     }
 
-    // 3. Quadrant Partition Lines (Center Cross)
-    final quadPaint = Paint()
+    // 3. Dynamic Field Zone Partitions
+    final partitionPaint = Paint()
       ..color = (isDark ? AppColors.primary : AppColors.primaryDark)
-          .withValues(alpha: 0.25)
+          .withValues(alpha: 0.20)
       ..strokeWidth = 1.5;
 
     final centerX = size.width / 2;
     final centerY = size.height / 2;
-    canvas.drawLine(Offset(centerX, 0), Offset(centerX, size.height), quadPaint);
-    canvas.drawLine(Offset(0, centerY), Offset(size.width, centerY), quadPaint);
 
-    // 4. Subtle Zone Watermark Labels
-    _drawZoneLabel(canvas, 'Q2 (North-West)', 12, 12);
-    _drawZoneLabel(canvas, 'Q1 (North-East)', centerX + 12, 12);
-    _drawZoneLabel(canvas, 'Q3 (South-West)', 12, centerY + 12);
-    _drawZoneLabel(canvas, 'Q4 (South-East)', centerX + 12, centerY + 12);
+    // Group placed nodes by assigned zone
+    final zoneNodeMap = <String, List<Esp32Node>>{};
+    for (final node in nodes) {
+      final zoneId = node.assignedZoneId;
+      if (zoneId != null && zoneId.isNotEmpty) {
+        zoneNodeMap.putIfAbsent(zoneId, () => []).add(node);
+      }
+    }
+
+    // If 4 zones with Q-based codes, render subtle quadrant partition guides
+    if (zoneNodeMap.length == 4 && zoneNodeMap.keys.any((k) => k.toUpperCase().contains('Q'))) {
+      canvas.drawLine(Offset(centerX, 0), Offset(centerX, size.height), partitionPaint);
+      canvas.drawLine(Offset(0, centerY), Offset(size.width, centerY), partitionPaint);
+    }
+
+    // 4. Dynamic Zone Watermark Labels based on centroid of placed nodes
+    for (final entry in zoneNodeMap.entries) {
+      final zoneId = entry.key;
+      final zoneNodes = entry.value;
+
+      double sumX = 0;
+      double sumY = 0;
+      int count = 0;
+
+      for (final n in zoneNodes) {
+        final coords = n.coordinates;
+        if (coords != null && coords.hasLocalCoordinates) {
+          sumX += (coords.localX! / widthMeters).clamp(0.0, 1.0);
+          sumY += (coords.localY! / heightMeters).clamp(0.0, 1.0);
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        final avgNormX = sumX / count;
+        final avgNormY = sumY / count;
+        final labelX = (avgNormX * size.width - 25).clamp(8.0, size.width - 85);
+        final labelY = (avgNormY * size.height - 25).clamp(8.0, size.height - 20);
+        _drawZoneLabel(canvas, zoneId, labelX, labelY);
+      }
+    }
 
     // 5. Perimeter Border
     final borderPaint = Paint()
@@ -457,7 +519,7 @@ class _FieldCanvasPainter extends CustomPainter {
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.bold,
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2),
+          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.25),
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -470,7 +532,8 @@ class _FieldCanvasPainter extends CustomPainter {
     return oldDelegate.showGridLines != showGridLines ||
         oldDelegate.widthMeters != widthMeters ||
         oldDelegate.heightMeters != heightMeters ||
-        oldDelegate.isDark != isDark;
+        oldDelegate.isDark != isDark ||
+        oldDelegate.nodes.length != nodes.length;
   }
 }
 

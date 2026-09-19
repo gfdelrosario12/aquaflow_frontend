@@ -10,9 +10,9 @@ class AppStrings {
   static const String navSettings = 'Settings';
 
   // Monitoring Zone Labels
-  static const String monitoringZonesTitle = 'Monitoring Quadrants';
+  static const String monitoringZonesTitle = 'Monitoring Zones';
   static const String zoneNotice =
-      'Zones Q1–Q4 are telemetry monitoring zones. Irrigation is managed central field-wide.';
+      'Field monitoring zones are telemetry observation points. Irrigation is managed central field-wide.';
 
   // Irrigation Control Labels
   static const String irrigationControlTitle = 'Central Field Irrigation';

@@ -1,53 +1,86 @@
 import 'package:flutter/material.dart';
+import '../../../../core/api/api_dtos.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../control/domain/models/control_enums.dart';
 import '../../../control/presentation/control_screen.dart';
 import '../../../nodes/domain/models/models.dart';
+import '../../../nodes/presentation/widgets/node_replacement_dialog.dart';
 import '../../../nodes/presentation/widgets/transmission_interval_dialog.dart';
 import '../../domain/models/models.dart';
 
 class DeviceDetailDialog extends StatelessWidget {
   final DeviceDiagnostic device;
   final ControlUserRole userRole;
+  final List<Esp32Node> availableReplacementNodes;
   final Future<bool> Function(
     int intervalSeconds, {
     bool isAdaptive,
     String? reason,
   })? onConfigureInterval;
+  final Future<NodeReplacementResult?> Function(NodeReplacementRequestDto request)?
+      onReplaceNode;
+  final Future<bool> Function(NodeLifecycleStatus targetStatus)?
+      onTransitionLifecycle;
 
   const DeviceDetailDialog({
     super.key,
     required this.device,
     this.userRole = ControlUserRole.operator,
+    this.availableReplacementNodes = const [],
     this.onConfigureInterval,
+    this.onReplaceNode,
+    this.onTransitionLifecycle,
   });
 
   static Future<void> show(
     BuildContext context,
     DeviceDiagnostic device, {
     ControlUserRole userRole = ControlUserRole.operator,
+    List<Esp32Node> availableReplacementNodes = const [],
     Future<bool> Function(
       int intervalSeconds, {
       bool isAdaptive,
       String? reason,
     })? onConfigureInterval,
+    Future<NodeReplacementResult?> Function(NodeReplacementRequestDto request)?
+        onReplaceNode,
+    Future<bool> Function(NodeLifecycleStatus targetStatus)?
+        onTransitionLifecycle,
   }) {
     return showDialog(
       context: context,
       builder: (context) => DeviceDetailDialog(
         device: device,
         userRole: userRole,
+        availableReplacementNodes: availableReplacementNodes,
         onConfigureInterval: onConfigureInterval,
+        onReplaceNode: onReplaceNode,
+        onTransitionLifecycle: onTransitionLifecycle,
       ),
     );
+  }
+
+  NodeLifecycleStatus get _nodeLifecycle {
+    switch (device.healthStatus) {
+      case DeviceHealthStatus.healthy:
+        return NodeLifecycleStatus.active;
+      case DeviceHealthStatus.degraded:
+        return NodeLifecycleStatus.maintenance;
+      case DeviceHealthStatus.offline:
+      case DeviceHealthStatus.stale:
+        return NodeLifecycleStatus.offline;
+      case DeviceHealthStatus.error:
+        return NodeLifecycleStatus.disabled;
+    }
   }
 
   Esp32Node get _asNode => Esp32Node(
         id: device.id,
         macAddress: device.macAddress ?? '00:00:00:00:00:00',
         displayName: device.name,
+        assignedZoneId: device.targetScope.contains('Q') ? device.targetScope : null,
         coordinates: SpatialCoordinates(
           latitude: device.latitude,
           longitude: device.longitude,
@@ -61,6 +94,7 @@ class DeviceDetailDialog extends StatelessWidget {
           lastConfiguredAt: device.lastSeen,
         ),
         isOnline: device.isOnline,
+        lifecycleState: _nodeLifecycle,
         batteryPercent: device.batteryPercent,
         batteryVoltage: device.batteryVoltage,
         rssiDbm: device.rssiDbm,
@@ -128,6 +162,43 @@ class DeviceDetailDialog extends StatelessWidget {
                 ),
               ],
             ),
+            if (isNode) ...[
+              const SizedBox(height: AppDimensions.spaceXs),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _nodeLifecycle == NodeLifecycleStatus.maintenance
+                          ? AppColors.alertWarning.withValues(alpha: 0.15)
+                          : (_nodeLifecycle.isRetired
+                              ? AppColors.alertError.withValues(alpha: 0.15)
+                              : AppColors.primary.withValues(alpha: 0.1)),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: _nodeLifecycle == NodeLifecycleStatus.maintenance
+                            ? AppColors.alertWarning.withValues(alpha: 0.5)
+                            : (_nodeLifecycle.isRetired
+                                ? AppColors.alertError.withValues(alpha: 0.5)
+                                : AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                    child: Text(
+                      'LIFECYCLE: ${_nodeLifecycle.name.toUpperCase()}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: _nodeLifecycle == NodeLifecycleStatus.maintenance
+                            ? AppColors.alertWarning
+                            : (_nodeLifecycle.isRetired
+                                ? AppColors.alertError
+                                : AppColors.primary),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: AppDimensions.spaceMd),
             if (device.macAddress != null) ...[
               Text(
@@ -244,6 +315,60 @@ class DeviceDetailDialog extends StatelessWidget {
                   label: const Text('Configure Transmission Interval'),
                 ),
               ],
+              if (onTransitionLifecycle != null &&
+                  userRole != ControlUserRole.viewer) ...[
+                const SizedBox(height: AppDimensions.spaceSm),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final nextStatus =
+                        _nodeLifecycle == NodeLifecycleStatus.maintenance
+                            ? NodeLifecycleStatus.active
+                            : NodeLifecycleStatus.maintenance;
+                    final success = await onTransitionLifecycle!(nextStatus);
+                    if (context.mounted && success) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  icon: Icon(
+                    _nodeLifecycle == NodeLifecycleStatus.maintenance
+                        ? Icons.play_arrow
+                        : Icons.build_outlined,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _nodeLifecycle == NodeLifecycleStatus.maintenance
+                        ? 'Resume Node (Active)'
+                        : 'Set to Maintenance Mode',
+                  ),
+                ),
+              ],
+              if (onReplaceNode != null &&
+                  userRole != ControlUserRole.viewer) ...[
+                const SizedBox(height: AppDimensions.spaceSm),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    await NodeReplacementDialog.show(
+                      context,
+                      targetNode: _asNode,
+                      availableNodes: availableReplacementNodes,
+                      userRole: userRole,
+                      onReplace: (req) async {
+                        final res = await onReplaceNode!(req);
+                        if (res != null && context.mounted) {
+                          Navigator.of(context).pop();
+                        }
+                        return res;
+                      },
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  icon: const Icon(Icons.swap_horiz, size: 18),
+                  label: const Text('Replace Node (Atomic Swap)'),
+                ),
+              ],
               const SizedBox(height: AppDimensions.spaceSm),
             ],
             const SizedBox(height: AppDimensions.spaceSm),
@@ -327,7 +452,7 @@ class DeviceDetailDialog extends StatelessWidget {
           const SizedBox(width: AppDimensions.spaceSm),
           Expanded(
             child: Text(
-              'Read-only telemetry node. Q1–Q4 do not control pumps or irrigation valves.',
+              'Read-only telemetry node. Observational sensor nodes do not control pumps or irrigation valves.',
               style: theme.textTheme.bodySmall,
             ),
           ),

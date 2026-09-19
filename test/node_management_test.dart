@@ -1,5 +1,6 @@
 import 'package:aquaflow_frontend/core/api/api_dtos.dart';
 import 'package:aquaflow_frontend/core/realtime/realtime_events.dart';
+import 'package:aquaflow_frontend/features/control/domain/models/control_enums.dart';
 import 'package:aquaflow_frontend/features/nodes/data/repositories/node_repository.dart';
 import 'package:aquaflow_frontend/features/nodes/domain/models/models.dart';
 import 'package:aquaflow_frontend/features/nodes/presentation/providers/node_management_notifier.dart';
@@ -228,5 +229,160 @@ void main() {
       });
       expect(status.type, RealtimeEventType.nodeStatus);
     });
+
+    test('parses nodeLifecycleUpdated and nodeReplaced event types', () {
+      final lifecycleEvt = RealtimeEvent.fromJson({
+        'version': 1,
+        'eventId': 'evt-lc-1',
+        'eventType': 'node_lifecycle_updated',
+        'occurredAt': DateTime.now().toUtc().toIso8601String(),
+        'sequence': 5,
+        'scope': 'NODE-Q1',
+        'payload': {'nodeId': 'NODE-Q1', 'lifecycleStatus': 'maintenance'},
+      });
+      expect(lifecycleEvt.type, RealtimeEventType.nodeLifecycleUpdated);
+
+      final replacedEvt = RealtimeEvent.fromJson({
+        'version': 1,
+        'eventId': 'evt-rep-1',
+        'eventType': 'node_replaced',
+        'occurredAt': DateTime.now().toUtc().toIso8601String(),
+        'sequence': 6,
+        'scope': 'NODE-Q1',
+        'payload': {
+          'oldNodeId': 'NODE-Q1',
+          'replacementNodeId': 'NODE-Q5',
+          'fieldId': 'field-main',
+          'zoneId': 'zone-q1',
+        },
+      });
+      expect(replacedEvt.type, RealtimeEventType.nodeReplaced);
+    });
+  });
+
+  group('Atomic Node Replacement & Measurement Preservation', () {
+    test('MockNodeRepository executes atomic swap preserving zone and point linkage', () async {
+      final repo = MockNodeRepository(
+        initialNodes: [
+          Esp32Node(
+            id: 'NODE-OLD',
+            macAddress: 'AA:11:22:33:44:55',
+            displayName: 'Old Sensor Q1',
+            assignedFieldId: 'field-1',
+            assignedZoneId: 'zone-1',
+            assignedPointId: 'point-1',
+            coordinates: const SpatialCoordinates(latitude: 14.15, longitude: 121.24, localX: 10, localY: 20),
+            transmissionConfig: TransmissionConfig(intervalSeconds: 60, lastConfiguredAt: DateTime.now()),
+            isOnline: true,
+            lifecycleState: NodeLifecycleStatus.active,
+            lastSeen: DateTime.now(),
+            soilMoisturePercent: 35.5,
+            waterLevelCm: 4.2,
+          ),
+          Esp32Node(
+            id: 'NODE-NEW',
+            macAddress: 'BB:11:22:33:44:55',
+            displayName: 'New Spare Sensor',
+            transmissionConfig: TransmissionConfig(intervalSeconds: 300, lastConfiguredAt: DateTime.now()),
+            isOnline: true,
+            lifecycleState: NodeLifecycleStatus.provisioned,
+            lastSeen: DateTime.now(),
+          ),
+        ],
+      );
+
+      final result = await repo.executeNodeReplacement(
+        oldNodeId: 'NODE-OLD',
+        replacementNodeId: 'NODE-NEW',
+        reason: 'Faulty soil probe',
+        transferCalibration: true,
+      );
+
+      expect(result.oldNodeId, 'NODE-OLD');
+      expect(result.replacementNodeId, 'NODE-NEW');
+      expect(result.historicalMeasurementsPreserved, isTrue);
+      expect(result.zoneId, 'zone-1');
+
+      // Check retired node
+      final retired = await repo.fetchNodeById('NODE-OLD');
+      expect(retired?.lifecycleState, NodeLifecycleStatus.replaced);
+      expect(retired?.replacedByNodeId, 'NODE-NEW');
+      expect(retired?.isRetired, isTrue);
+
+      // Check active replacement node
+      final active = await repo.fetchNodeById('NODE-NEW');
+      expect(active?.lifecycleState, NodeLifecycleStatus.active);
+      expect(active?.assignedZoneId, 'zone-1');
+      expect(active?.assignedPointId, 'point-1');
+      expect(active?.replacesNodeId, 'NODE-OLD');
+      // Preserves historical telemetry reading continuity
+      expect(active?.soilMoisturePercent, 35.5);
+      expect(active?.waterLevelCm, 4.2);
+    });
+
+    test('NodeManagementNotifier enforces role permissions on replacement', () async {
+      final repo = MockNodeRepository();
+      final notifier = NodeManagementNotifier(repository: repo);
+      addTearDown(notifier.dispose);
+      await notifier.fetchNodes();
+
+      // Viewer role must be rejected
+      final viewerResult = await notifier.executeNodeReplacement(
+        'NODE-Q1',
+        const NodeReplacementRequestDto(replacementNodeId: 'NODE-Q2'),
+        userRole: ControlUserRole.viewer,
+      );
+      expect(viewerResult, isNull);
+      expect(notifier.state.errorMessage, contains('Viewers cannot replace sensor nodes'));
+
+      // Operator role succeeds
+      final operatorResult = await notifier.executeNodeReplacement(
+        'NODE-Q1',
+        const NodeReplacementRequestDto(
+          replacementNodeId: 'NODE-Q2',
+          reason: 'Routine hardware upgrade',
+        ),
+        userRole: ControlUserRole.operator,
+      );
+      expect(operatorResult, isNotNull);
+      expect(operatorResult!.oldNodeId, 'NODE-Q1');
+      expect(operatorResult.replacementNodeId, 'NODE-Q2');
+    });
+
+    test('NodeManagementNotifier handles realtime nodeReplaced event', () async {
+      final repo = MockNodeRepository();
+      final notifier = NodeManagementNotifier(repository: repo);
+      addTearDown(notifier.dispose);
+      await notifier.fetchNodes();
+
+      notifier.handleRealtimeEvent(
+        RealtimeEvent.fromJson({
+          'version': 1,
+          'eventId': 'evt-rep-live',
+          'eventType': 'node_replaced',
+          'occurredAt': DateTime.now().toUtc().toIso8601String(),
+          'sequence': 10,
+          'scope': 'NODE-Q1',
+          'payload': {
+            'oldNodeId': 'NODE-Q1',
+            'replacementNodeId': 'NODE-Q2',
+            'fieldId': 'field-1',
+            'zoneId': 'zone-1',
+            'monitoringPointId': 'point-1',
+            'replacedAt': DateTime.now().toUtc().toIso8601String(),
+          },
+        }),
+      );
+
+      final oldNode = notifier.state.nodes.firstWhere((n) => n.id == 'NODE-Q1');
+      expect(oldNode.lifecycleState, NodeLifecycleStatus.replaced);
+      expect(oldNode.replacedByNodeId, 'NODE-Q2');
+
+      final newNode = notifier.state.nodes.firstWhere((n) => n.id == 'NODE-Q2');
+      expect(newNode.lifecycleState, NodeLifecycleStatus.active);
+      expect(newNode.replacesNodeId, 'NODE-Q1');
+      expect(newNode.assignedZoneId, 'zone-1');
+    });
   });
 }
+
