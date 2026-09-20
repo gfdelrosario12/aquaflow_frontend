@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../../features/auth/domain/models/user_role.dart';
 import '../../irrigation/domain/models/auto_irrigation_config.dart';
 import '../../irrigation/domain/models/auto_irrigation_status.dart';
 import '../../irrigation/presentation/providers/irrigation_notifier.dart';
@@ -387,19 +388,25 @@ class _ControlScreenState extends State<ControlScreen> {
                     runSpacing: AppDimensions.spaceSm,
                     children: [
                       if (status.isFaultLocked)
-                        FilledButton.tonalIcon(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
-                            foregroundColor: AppColors.alertError,
+                        AuthorizationGate(
+                          requiredRole: UserRole.operator,
+                          child: FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
+                              foregroundColor: AppColors.alertError,
+                            ),
+                            icon: const Icon(Icons.lock_open, size: 16),
+                            label: const Text('Clear Lockout'),
+                            onPressed: _handleClearLockout,
                           ),
-                          icon: const Icon(Icons.lock_open, size: 16),
-                          label: const Text('Clear Lockout'),
-                          onPressed: _handleClearLockout,
                         ),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.tune, size: 16),
-                        label: const Text('Configure'),
-                        onPressed: _handleConfigureAutomation,
+                      AuthorizationGate(
+                        requiredRole: UserRole.operator,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.tune, size: 16),
+                          label: const Text('Configure'),
+                          onPressed: _handleConfigureAutomation,
+                        ),
                       ),
                     ],
                   ),
@@ -414,21 +421,27 @@ class _ControlScreenState extends State<ControlScreen> {
                       Row(
                         children: [
                           if (status.isFaultLocked) ...[
-                            FilledButton.tonalIcon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
-                                foregroundColor: AppColors.alertError,
+                            AuthorizationGate(
+                              requiredRole: UserRole.operator,
+                              child: FilledButton.tonalIcon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
+                                  foregroundColor: AppColors.alertError,
+                                ),
+                                icon: const Icon(Icons.lock_open, size: 16),
+                                label: const Text('Clear Lockout'),
+                                onPressed: _handleClearLockout,
                               ),
-                              icon: const Icon(Icons.lock_open, size: 16),
-                              label: const Text('Clear Lockout'),
-                              onPressed: _handleClearLockout,
                             ),
                             const SizedBox(width: AppDimensions.spaceSm),
                           ],
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.tune, size: 16),
-                            label: const Text('Configure'),
-                            onPressed: _handleConfigureAutomation,
+                          AuthorizationGate(
+                            requiredRole: UserRole.operator,
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.tune, size: 16),
+                              label: const Text('Configure'),
+                              onPressed: _handleConfigureAutomation,
+                            ),
                           ),
                         ],
                       ),
@@ -785,39 +798,45 @@ class _ControlScreenState extends State<ControlScreen> {
           Row(
             children: [
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: isDisabled || isIrrigating ? null : _handleStartIrrigation,
-                  icon: isPending && !isIrrigating
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.play_arrow),
-                  label: const Text('Start Field Irrigation'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: AppColors.pumpActive,
-                    foregroundColor: Colors.white,
+                child: AuthorizationGate(
+                  requiredRole: UserRole.operator,
+                  child: ElevatedButton.icon(
+                    onPressed: isDisabled || isIrrigating ? null : _handleStartIrrigation,
+                    icon: isPending && !isIrrigating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.play_arrow),
+                    label: const Text('Start Field Irrigation'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: AppColors.pumpActive,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: AppDimensions.spaceSm),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: isDisabled || !isIrrigating ? null : _handleStopIrrigation,
-                  icon: isPending && isIrrigating
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.stop),
-                  label: const Text('Stop Field Irrigation'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: AppColors.alertWarning,
-                    foregroundColor: Colors.white,
+                child: AuthorizationGate(
+                  requiredRole: UserRole.operator,
+                  child: ElevatedButton.icon(
+                    onPressed: isDisabled || !isIrrigating ? null : _handleStopIrrigation,
+                    icon: isPending && isIrrigating
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.stop),
+                    label: const Text('Stop Field Irrigation'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: AppColors.alertWarning,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
               ),

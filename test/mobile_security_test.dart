@@ -170,7 +170,7 @@ void main() {
   });
 
   group('API authorization and timeout mapping', () {
-    test('maps 403 to authorization and does not retry POST', () async {
+    test('maps 403 to insufficientRole and does not retry POST', () async {
       var calls = 0;
       final client = ApiClient(
         config: const ApiConfig(baseUrl: 'https://example.test'),
@@ -186,7 +186,7 @@ void main() {
           isA<ApiException>().having(
             (e) => e.kind,
             'kind',
-            ApiErrorKind.authorization,
+            ApiErrorKind.insufficientRole,
           ),
         ),
       );

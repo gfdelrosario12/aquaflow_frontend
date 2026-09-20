@@ -255,6 +255,7 @@ class CentralControlNotifier extends ChangeNotifier {
         return CommandOutcome.timedOut;
       case ApiErrorKind.authentication:
       case ApiErrorKind.authorization:
+      case ApiErrorKind.insufficientRole:
         return CommandOutcome.rejected;
       default:
         return CommandOutcome.failed;
@@ -267,8 +268,10 @@ class CentralControlNotifier extends ChangeNotifier {
         return 'Irrigation command timed out before controller acknowledgment. Status is unconfirmed.';
       case ApiErrorKind.authentication:
         return 'Sign in is required before irrigation commands.';
+      case ApiErrorKind.insufficientRole:
       case ApiErrorKind.authorization:
-        return 'Unauthorized: you do not have irrigation control permission.';
+        // Do not reveal role claim names or token contents.
+        return 'You do not have permission to perform this action.';
       default:
         return 'Irrigation command failed. Re-check centralized field status before retrying.';
     }

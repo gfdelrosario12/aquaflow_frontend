@@ -1,4 +1,5 @@
 import '../../domain/models/auth_token.dart';
+import '../../domain/models/user_role.dart';
 import '../../domain/models/user_session.dart';
 
 abstract class AuthService {
@@ -8,6 +9,16 @@ abstract class AuthService {
   Future<void> logout(String accessToken);
 }
 
+/// Mock implementation used during development and tests.
+///
+/// Returns tokens with stub field-scoped claims so [UserSession.canPerform]
+/// and [AuthorizationGate] work without a real backend.
+///
+/// By default, users are logged in as [UserRole.operator]. Pass a role-coded
+/// password to override:
+///   - `viewer_pass`   → UserRole.viewer
+///   - `admin_pass`    → UserRole.fieldAdmin
+///   - any other value → UserRole.operator
 class MockAuthService implements AuthService {
   @override
   Future<UserSession> login(String identifier, String password) async {
@@ -21,11 +32,8 @@ class MockAuthService implements AuthService {
       throw Exception('Invalid username or password.');
     }
 
-    final token = AuthToken(
-      accessToken: 'mock_access_token_${DateTime.now().millisecondsSinceEpoch}',
-      refreshToken: 'mock_refresh_token_${DateTime.now().millisecondsSinceEpoch}',
-      expiresAt: DateTime.now().add(const Duration(hours: 8)),
-    );
+    final role = _roleFromPassword(password);
+    final token = _stubToken(role: role);
 
     return UserSession(
       userId: 'usr_001',
@@ -33,7 +41,7 @@ class MockAuthService implements AuthService {
           ? identifier.split('@').first
           : identifier,
       email: identifier.contains('@') ? identifier : '$identifier@aquaflow.io',
-      role: 'Field Operator',
+      role: role.displayLabel,
       token: token,
     );
   }
@@ -45,10 +53,12 @@ class MockAuthService implements AuthService {
       throw Exception('Refresh token is invalid or expired.');
     }
 
-    return AuthToken(
-      accessToken: 'mock_access_token_refreshed_${DateTime.now().millisecondsSinceEpoch}',
+    // Preserve the role encoded in the stub refresh token if possible.
+    final role = _roleFromRefreshToken(refreshToken);
+    return _stubToken(
+      prefix: 'mock_access_token_refreshed',
       refreshToken: refreshToken,
-      expiresAt: DateTime.now().add(const Duration(hours: 8)),
+      role: role,
     );
   }
 
@@ -61,5 +71,37 @@ class MockAuthService implements AuthService {
   @override
   Future<void> logout(String accessToken) async {
     await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  UserRole _roleFromPassword(String password) {
+    if (password == 'viewer_pass') return UserRole.viewer;
+    if (password == 'admin_pass') return UserRole.fieldAdmin;
+    return UserRole.operator;
+  }
+
+  UserRole _roleFromRefreshToken(String refreshToken) {
+    if (refreshToken.contains('viewer')) return UserRole.viewer;
+    if (refreshToken.contains('admin')) return UserRole.fieldAdmin;
+    return UserRole.operator;
+  }
+
+  /// Returns a stub [AuthToken] with field-scoped claims embedded directly
+  /// in the model fields (no real JWT encoding needed for mocks).
+  AuthToken _stubToken({
+    String prefix = 'mock_access_token',
+    String? refreshToken,
+    UserRole role = UserRole.operator,
+  }) {
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    return AuthToken(
+      accessToken: '${prefix}_${role.claimValue}_$ts',
+      refreshToken: refreshToken ??
+          'mock_refresh_token_${role.claimValue}_$ts',
+      expiresAt: DateTime.now().add(const Duration(hours: 8)),
+      fieldId: 'field_mock_001',
+      role: role,
+    );
   }
 }

@@ -107,6 +107,74 @@ void main() {
       throwsA(isA<ApiException>().having((error) => error.kind, 'kind', ApiErrorKind.decoding)),
     );
   });
+
+  test('HTTP 403 maps to insufficientRole and preserves the session', () async {
+    final transport = _FakeHttpClient((request) async => _response(request, 403, '{"message":"forbidden"}'));
+    final store = _FakeTokenStore(access: 'access-1', refresh: 'refresh-1');
+    final client = ApiClient(
+      config: const ApiConfig(baseUrl: 'https://example.test'),
+      httpClient: transport,
+      tokenStore: store,
+    );
+
+    expect(
+      () => client.get('/api/fields'),
+      throwsA(isA<ApiException>().having((error) => error.kind, 'kind', ApiErrorKind.insufficientRole)),
+    );
+
+    expect(store.access, 'access-1');
+    expect(store.refresh, 'refresh-1');
+  });
+
+  test('HTTP 401 after refresh failure maps to unauthenticated and clears the session', () async {
+    var calls = 0;
+    final transport = _FakeHttpClient((request) async {
+      calls++;
+      if (calls == 1) return _response(request, 401, '{"message":"expired"}');
+      return _response(request, 401, '{"message":"refresh failed"}');
+    });
+    final store = _FakeTokenStore(access: 'expired', refresh: 'refresh-1');
+    final client = ApiClient(
+      config: const ApiConfig(baseUrl: 'https://example.test'),
+      httpClient: transport,
+      tokenStore: store,
+      refreshToken: (token) async {
+        return null;
+      },
+    );
+
+    ApiException? caughtError;
+    try {
+      await client.get('/api/fields');
+    } on ApiException catch (e) {
+      caughtError = e;
+    }
+
+    expect(caughtError, isNotNull);
+    expect(caughtError!.kind, ApiErrorKind.authentication);
+    expect(store.access, isNull);
+    expect(store.refresh, isNull);
+  });
+
+  test('401 and 403 are not conflated', () async {
+    final transport = _FakeHttpClient((request) async => _response(request, 403, '{"message":"forbidden"}'));
+    final client = ApiClient(
+      config: const ApiConfig(baseUrl: 'https://example.test'),
+      httpClient: transport,
+    );
+
+    ApiException? caughtError;
+    try {
+      await client.get('/api/fields');
+    } on ApiException catch (e) {
+      caughtError = e;
+    }
+
+    expect(caughtError, isNotNull);
+    expect(caughtError!.kind, ApiErrorKind.insufficientRole);
+    expect(caughtError.isInsufficientRole, isTrue);
+    expect(caughtError.isUnauthenticated, isFalse);
+  });
 }
 
 http.StreamedResponse _response(http.BaseRequest request, int status, String body) {

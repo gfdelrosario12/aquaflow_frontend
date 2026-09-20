@@ -103,8 +103,8 @@ void main() {
       await expectKind(401, ApiErrorKind.authentication);
     });
 
-    test('maps 403 to authorization', () async {
-      await expectKind(403, ApiErrorKind.authorization);
+    test('maps 403 to insufficientRole', () async {
+      await expectKind(403, ApiErrorKind.insufficientRole);
     });
 
     test('maps 500 to server error', () async {
@@ -163,7 +163,7 @@ void main() {
         throwsA(
           isA<ApiException>()
               .having((e) => e.statusCode, 'statusCode', 403)
-              .having((e) => e.kind, 'kind', ApiErrorKind.authorization),
+              .having((e) => e.kind, 'kind', ApiErrorKind.insufficientRole),
         ),
       );
     });

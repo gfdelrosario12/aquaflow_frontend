@@ -3,6 +3,7 @@ import '../../../core/api/api_dtos.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/widgets/widgets.dart';
+import '../../../features/auth/domain/models/user_role.dart';
 import '../../control/domain/models/control_enums.dart';
 import '../../nodes/data/repositories/node_repository.dart';
 import '../../nodes/domain/models/models.dart';
@@ -99,10 +100,13 @@ class _DeviceDiagnosticsScreenState extends State<DeviceDiagnosticsScreen> {
       appBar: AppBar(
         title: const Text('Device Diagnostics'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            tooltip: 'Register ESP32 Node',
-            onPressed: _openNodeRegistration,
+          AuthorizationGate(
+            requiredRole: UserRole.operator,
+            child: IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              tooltip: 'Register ESP32 Node',
+              onPressed: _openNodeRegistration,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:aquaflow_frontend/features/auth/domain/models/auth_token.dart';
+import 'package:aquaflow_frontend/features/auth/domain/models/user_role.dart';
+import 'package:aquaflow_frontend/features/auth/domain/models/user_session.dart';
+import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
 import 'package:aquaflow_frontend/features/control/presentation/control_screen.dart';
 import 'package:aquaflow_frontend/features/control/presentation/providers/central_control_provider.dart';
@@ -13,6 +17,30 @@ import 'package:aquaflow_frontend/features/irrigation/presentation/providers/irr
 
 void main() {
   group('ControlScreen automatic irrigation UI', () {
+    setUp(() {
+      // Authenticate as operator to see control buttons
+      final operatorToken = AuthToken(
+        accessToken: 'test_access',
+        refreshToken: 'test_refresh',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+        fieldId: 'field_test',
+        role: UserRole.operator,
+      );
+      final operatorSession = UserSession(
+        userId: 'test_operator',
+        username: 'test_operator',
+        email: 'test@operator.com',
+        role: 'Operator',
+        token: operatorToken,
+      );
+      globalAuthNotifier.state = AuthState.authenticated(operatorSession);
+    });
+
+    tearDown(() {
+      // Reset auth state without calling secure storage
+      globalAuthNotifier.state = AuthState.unauthenticated();
+    });
+
     testWidgets('renders automation supervisor badge and disabled banner',
         (tester) async {
       final irrigationNotifier = IrrigationNotifier(

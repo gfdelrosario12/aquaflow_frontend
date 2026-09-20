@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/widgets/aqua_button.dart';
-import '../../../../core/widgets/aqua_card.dart';
-import '../../../../core/widgets/aqua_chart_container.dart';
-import '../../../../core/widgets/sensor_metric_tile.dart';
-import '../../../../core/widgets/simulated_telemetry_chart.dart';
-import '../../../../core/widgets/status_badge.dart';
+import '../../../../core/widgets/widgets.dart';
+import '../../../auth/domain/models/user_role.dart';
 import '../../../control/domain/models/control_enums.dart';
 import '../../../nodes/domain/models/models.dart';
-import '../../../zones/domain/models/monitoring_zone.dart';
+import '../../../zones/domain/models/monitoring_zone.dart'
+    as zone_models;
 import '../../../zones/presentation/zone_analysis_screen.dart';
 
 class ZoneDetailBottomSheet extends StatelessWidget {
-  final MonitoringZone zone;
+  final zone_models.MonitoringZone zone;
   final VoidCallback? onNavigateToControl;
   final List<Esp32Node> assignedNodes;
   final ControlUserRole userRole;
@@ -30,7 +27,7 @@ class ZoneDetailBottomSheet extends StatelessWidget {
 
   static void show(
     BuildContext context, {
-    required MonitoringZone zone,
+    required zone_models.MonitoringZone zone,
     VoidCallback? onNavigateToControl,
     List<Esp32Node> assignedNodes = const [],
     ControlUserRole userRole = ControlUserRole.operator,
@@ -250,15 +247,17 @@ class ZoneDetailBottomSheet extends StatelessWidget {
                 ],
               ),
               if (onConfigureInterval != null &&
-                  assignedNodes.isNotEmpty &&
-                  userRole != ControlUserRole.viewer) ...[
+                  assignedNodes.isNotEmpty) ...[
                 const SizedBox(height: AppDimensions.spaceSm),
-                AquaButton(
-                  label: 'Configure Transmission Interval',
-                  icon: Icons.timer_outlined,
-                  variant: AquaButtonVariant.outline,
-                  isFullWidth: true,
-                  onPressed: () => onConfigureInterval!(assignedNodes.first),
+                AuthorizationGate(
+                  requiredRole: UserRole.operator,
+                  child: AquaButton(
+                    label: 'Configure Transmission Interval',
+                    icon: Icons.timer_outlined,
+                    variant: AquaButtonVariant.outline,
+                    isFullWidth: true,
+                    onPressed: () => onConfigureInterval!(assignedNodes.first),
+                  ),
                 ),
               ],
               const SizedBox(height: AppDimensions.spaceSm),
@@ -479,7 +478,7 @@ class ZoneDetailBottomSheet extends StatelessWidget {
     return '$hour:$minute';
   }
 
-  Widget _buildFreshnessBadge(MonitoringZone zone) {
+  Widget _buildFreshnessBadge(zone_models.MonitoringZone zone) {
     final ageMinutes = DateTime.now().difference(zone.lastUpdated).inMinutes.clamp(0, 99999);
     final isStale = ageMinutes >= 15;
     final color = isStale ? AppColors.warning : AppColors.success;
@@ -511,7 +510,7 @@ class ZoneDetailBottomSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildReliabilityBadge(MonitoringZone zone) {
+  Widget _buildReliabilityBadge(zone_models.MonitoringZone zone) {
     final isOutOfBounds = zone.waterLevelCm < -30.0 || zone.waterLevelCm > 30.0;
     final ageMinutes = DateTime.now().difference(zone.lastUpdated).inMinutes;
     final isStale = ageMinutes >= 15;

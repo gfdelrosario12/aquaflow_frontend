@@ -287,7 +287,9 @@ class ApiClient {
 
   ApiErrorKind _errorKind(int statusCode) {
     if (statusCode == 401) return ApiErrorKind.authentication;
-    if (statusCode == 403) return ApiErrorKind.authorization;
+    // 403 maps to insufficientRole (session preserved, show role warning).
+    // This is distinct from 401 (session cleared, redirect to login).
+    if (statusCode == 403) return ApiErrorKind.insufficientRole;
     if (statusCode == 400 || statusCode == 422) return ApiErrorKind.validation;
     if (statusCode >= 500) return ApiErrorKind.server;
     return ApiErrorKind.unexpected;
@@ -298,7 +300,8 @@ class ApiClient {
       return SensitiveDataRedactor.redactString(decoded['message'] as String);
     }
     if (statusCode == 403) {
-      return 'You are not authorized to perform this operation.';
+      // Do not reveal role claim, token contents, or which permission failed.
+      return 'You do not have permission to perform this action.';
     }
     if (statusCode == 401) {
       return 'Authentication is required or the session has expired.';

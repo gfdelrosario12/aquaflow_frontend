@@ -3,6 +3,7 @@ import '../../../../core/api/api_dtos.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/widgets.dart';
+import '../../../../features/auth/domain/models/user_role.dart';
 import '../../../control/domain/models/control_enums.dart';
 import '../../../control/presentation/control_screen.dart';
 import '../../../nodes/domain/models/models.dart';
@@ -302,17 +303,20 @@ class DeviceDetailDialog extends StatelessWidget {
               ),
               if (onConfigureInterval != null) ...[
                 const SizedBox(height: AppDimensions.spaceSm),
-                OutlinedButton.icon(
-                  onPressed: () async {
-                    await TransmissionIntervalDialog.show(
-                      context,
-                      node: _asNode,
-                      userRole: userRole,
-                      onConfigure: onConfigureInterval!,
-                    );
-                  },
-                  icon: const Icon(Icons.timer_outlined, size: 18),
-                  label: const Text('Configure Transmission Interval'),
+                AuthorizationGate(
+                  requiredRole: UserRole.operator,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await TransmissionIntervalDialog.show(
+                        context,
+                        node: _asNode,
+                        userRole: userRole,
+                        onConfigure: onConfigureInterval!,
+                      );
+                    },
+                    icon: const Icon(Icons.timer_outlined, size: 18),
+                    label: const Text('Configure Transmission Interval'),
+                  ),
                 ),
               ],
               if (onTransitionLifecycle != null &&
@@ -345,28 +349,31 @@ class DeviceDetailDialog extends StatelessWidget {
               if (onReplaceNode != null &&
                   userRole != ControlUserRole.viewer) ...[
                 const SizedBox(height: AppDimensions.spaceSm),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await NodeReplacementDialog.show(
-                      context,
-                      targetNode: _asNode,
-                      availableNodes: availableReplacementNodes,
-                      userRole: userRole,
-                      onReplace: (req) async {
-                        final res = await onReplaceNode!(req);
-                        if (res != null && context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                        return res;
-                      },
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                AuthorizationGate(
+                  requiredRole: UserRole.operator,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      await NodeReplacementDialog.show(
+                        context,
+                        targetNode: _asNode,
+                        availableNodes: availableReplacementNodes,
+                        userRole: userRole,
+                        onReplace: (req) async {
+                          final res = await onReplaceNode!(req);
+                          if (res != null && context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                          return res;
+                        },
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.swap_horiz, size: 18),
+                    label: const Text('Replace Node (Atomic Swap)'),
                   ),
-                  icon: const Icon(Icons.swap_horiz, size: 18),
-                  label: const Text('Replace Node (Atomic Swap)'),
                 ),
               ],
               const SizedBox(height: AppDimensions.spaceSm),
