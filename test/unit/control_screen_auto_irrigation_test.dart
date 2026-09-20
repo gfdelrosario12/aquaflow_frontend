@@ -13,6 +13,7 @@ import 'package:aquaflow_frontend/features/irrigation/domain/models/auto_irrigat
 import 'package:aquaflow_frontend/features/irrigation/domain/models/auto_irrigation_status.dart';
 import 'package:aquaflow_frontend/features/irrigation/domain/models/centralized_irrigation.dart';
 import 'package:aquaflow_frontend/features/irrigation/domain/models/irrigation_execution_audit_log.dart';
+import 'package:aquaflow_frontend/features/irrigation/domain/models/manual_irrigation_control.dart';
 import 'package:aquaflow_frontend/features/irrigation/presentation/providers/irrigation_notifier.dart';
 
 void main() {
@@ -311,4 +312,13 @@ class _FakeIrrigationRepository implements IrrigationRepository {
   Future<CentralizedIrrigation> updateSystemMode(SystemMode mode) {
     throw UnimplementedError();
   }
+
+  @override
+  Future<bool> dispatchManualStart(ManualIrrigationCommand command) async => true;
+
+  @override
+  Future<bool> dispatchManualStop({required String operatorId, String? rationale}) async => true;
+
+  @override
+  Future<bool> dispatchEmergencyStop({required String operatorId, String? rationale}) async => true;
 }

@@ -1026,5 +1026,168 @@ class IrrigationAuditLogListDto {
   }
 }
 
+class AuditActorDto {
+  final String type;
+  final String id;
+  final String displayName;
+
+  const AuditActorDto({
+    required this.type,
+    required this.id,
+    required this.displayName,
+  });
+
+  factory AuditActorDto.fromJson(JsonMap json) => AuditActorDto(
+        type: json['type']?.toString() ?? 'system',
+        id: json['id']?.toString() ?? '',
+        displayName: json['displayName']?.toString() ?? '',
+      );
+
+  JsonMap toJson() => {
+        'type': type,
+        'id': id,
+        'displayName': displayName,
+      };
+}
+
+class AuditTargetDto {
+  final String type;
+  final String id;
+  final String? displayName;
+
+  const AuditTargetDto({
+    required this.type,
+    required this.id,
+    this.displayName,
+  });
+
+  factory AuditTargetDto.fromJson(JsonMap json) => AuditTargetDto(
+        type: json['type']?.toString() ?? 'system',
+        id: json['id']?.toString() ?? '',
+        displayName: json['displayName']?.toString(),
+      );
+
+  JsonMap toJson() => {
+        'type': type,
+        'id': id,
+        if (displayName != null) 'displayName': displayName,
+      };
+}
+
+class AuditMetadataDto {
+  final String? correlationId;
+  final String? requestId;
+  final String? clientIp;
+  final JsonMap? priorState;
+  final JsonMap? newState;
+  final String? rationale;
+  final String? failureReason;
+  final JsonMap? ext;
+
+  const AuditMetadataDto({
+    this.correlationId,
+    this.requestId,
+    this.clientIp,
+    this.priorState,
+    this.newState,
+    this.rationale,
+    this.failureReason,
+    this.ext,
+  });
+
+  factory AuditMetadataDto.fromJson(JsonMap json) => AuditMetadataDto(
+        correlationId: json['correlationId']?.toString(),
+        requestId: json['requestId']?.toString(),
+        clientIp: json['clientIp']?.toString(),
+        priorState: json['priorState'] is JsonMap ? json['priorState'] as JsonMap : null,
+        newState: json['newState'] is JsonMap ? json['newState'] as JsonMap : null,
+        rationale: json['rationale']?.toString(),
+        failureReason: json['failureReason']?.toString(),
+        ext: json['ext'] is JsonMap ? json['ext'] as JsonMap : null,
+      );
+
+  JsonMap toJson() => {
+        if (correlationId != null) 'correlationId': correlationId,
+        if (requestId != null) 'requestId': requestId,
+        if (clientIp != null) 'clientIp': clientIp,
+        if (priorState != null) 'priorState': priorState,
+        if (newState != null) 'newState': newState,
+        if (rationale != null) 'rationale': rationale,
+        if (failureReason != null) 'failureReason': failureReason,
+        if (ext != null) 'ext': ext,
+      };
+}
+
+class AccountAuditEventDto {
+  final String eventId;
+  final String timestamp;
+  final AuditActorDto actor;
+  final String category;
+  final String action;
+  final AuditTargetDto target;
+  final String result;
+  final AuditMetadataDto metadata;
+
+  const AccountAuditEventDto({
+    required this.eventId,
+    required this.timestamp,
+    required this.actor,
+    required this.category,
+    required this.action,
+    required this.target,
+    required this.result,
+    required this.metadata,
+  });
+
+  factory AccountAuditEventDto.fromJson(JsonMap json) => AccountAuditEventDto(
+        eventId: json['eventId']?.toString() ?? '',
+        timestamp: json['timestamp']?.toString() ?? DateTime.now().toIso8601String(),
+        actor: json['actor'] is JsonMap
+            ? AuditActorDto.fromJson(json['actor'] as JsonMap)
+            : const AuditActorDto(type: 'system', id: 'sys', displayName: 'System'),
+        category: json['category']?.toString() ?? 'system',
+        action: json['action']?.toString() ?? '',
+        target: json['target'] is JsonMap
+            ? AuditTargetDto.fromJson(json['target'] as JsonMap)
+            : const AuditTargetDto(type: 'system', id: 'sys'),
+        result: json['result']?.toString() ?? 'success',
+        metadata: json['metadata'] is JsonMap
+            ? AuditMetadataDto.fromJson(json['metadata'] as JsonMap)
+            : const AuditMetadataDto(),
+      );
+
+  JsonMap toJson() => {
+        'eventId': eventId,
+        'timestamp': timestamp,
+        'actor': actor.toJson(),
+        'category': category,
+        'action': action,
+        'target': target.toJson(),
+        'result': result,
+        'metadata': metadata.toJson(),
+      };
+}
+
+class AccountAuditEventListDto {
+  final List<AccountAuditEventDto> items;
+
+  const AccountAuditEventListDto(this.items);
+
+  factory AccountAuditEventListDto.fromJson(Object? json) {
+    final rawItems = json is List
+        ? json
+        : json is JsonMap && json['items'] is List
+            ? json['items'] as List
+            : const [];
+    return AccountAuditEventListDto(
+      rawItems
+          .whereType<JsonMap>()
+          .map(AccountAuditEventDto.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+
 
 

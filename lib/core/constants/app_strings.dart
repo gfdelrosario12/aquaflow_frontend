@@ -7,6 +7,7 @@ class AppStrings {
   static const String navField = 'Field';
   static const String navAnalytics = 'Analytics';
   static const String navControl = 'Control';
+  static const String navManualControl = 'Manual';
   static const String navSettings = 'Settings';
 
   // Monitoring Zone Labels

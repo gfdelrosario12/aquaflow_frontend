@@ -1,9 +1,7 @@
 ## Purpose
 
 Provides the AquaSense mobile application's shared REST transport, API DTOs and services, authentication lifecycle integration, repository adapters, typed error handling, and centralized irrigation safety boundary.
-
 ## Requirements
-
 ### Requirement: Shared REST transport configuration
 The system SHALL provide a shared REST client configured with an environment-specific HTTPS base URL, JSON request/response handling, authentication header injection, request timeouts, response decoding, and safe request diagnostics that redact secrets.
 
@@ -67,7 +65,7 @@ The system SHALL provide REST-backed repository implementations for authenticati
 - **THEN** existing feature notifiers and screens consume the same domain-facing interfaces without direct HTTP or DTO dependencies.
 
 ### Requirement: Monitoring query and irrigation command isolation
-The system SHALL allow Q1-Q4 identifiers for independent monitoring queries but SHALL restrict irrigation mutations to the centralized entire-field system. The mobile application MUST NOT communicate directly with LoRaWAN devices or gateway hardware.
+The system SHALL allow dynamic zone identifiers for independent monitoring queries but SHALL restrict irrigation mutations to the centralized entire-field system. The mobile application MUST NOT communicate directly with LoRaWAN devices or gateway hardware.
 
 #### Scenario: Query an individual monitoring quarter
 - **WHEN** a monitoring repository requests a quarter or quarter measurements for Q1, Q2, Q3, or Q4
@@ -80,6 +78,10 @@ The system SHALL allow Q1-Q4 identifiers for independent monitoring queries but 
 #### Scenario: Mobile app communicates with field hardware
 - **WHEN** the app needs gateway or irrigation hardware state
 - **THEN** it communicates with the AquaSense REST API and never opens a direct LoRaWAN, radio, or gateway hardware connection.
+
+#### Scenario: LoRaWAN device telemetry isolation
+- **WHEN** the Flutter mobile application requests LoRaWAN device telemetry or status
+- **THEN** the backend API service handles LNS message decoding and returns parsed domain models over REST or WebSocket, isolating the client app from raw LoRaWAN frames and network server credentials.
 
 ### Requirement: HTTPS and TLS transport enforcement
 The system SHALL enforce HTTPS for backend API communication in non-test configurations, use platform certificate validation, and return a typed transport-security failure when the base URL scheme is insecure or TLS cannot be established safely.
@@ -106,7 +108,6 @@ The system SHALL provide dedicated REST service client endpoints and typed DTO s
 - **WHEN** the replacement endpoint `POST /api/nodes/{id}/replace` is called with replacement node ID and target zone ID
 - **THEN** the backend updates the node mappings, emits replacement events, and returns the updated zone and node representations with historical measurement continuity verified.
 
-
 ### Requirement: Automatic irrigation configuration and audit trail API endpoints
 The system SHALL provide REST API service endpoints and DTO mappings for automated irrigation management, including `/api/irrigation/auto-config` (GET, PUT), `/api/irrigation/auto-state` (GET), `/api/irrigation/auto-lockout/clear` (POST), and `/api/irrigation/audit-log` (GET). All audit log entries MUST include typed actor metadata (`actorType: system | user`, `actorId: String`).
 
@@ -125,3 +126,4 @@ The system SHALL provide REST API service endpoints and DTO mappings for automat
 #### Scenario: Clearing a fault lockout
 - **WHEN** an authorized operator clears a fault lockout on the Control screen
 - **THEN** the application dispatches a POST request to `/api/irrigation/auto-lockout/clear` with an optional resolution note, receiving the restored `standby` state.
+

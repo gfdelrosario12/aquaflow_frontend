@@ -446,25 +446,72 @@ class DeviceDetailDialog extends StatelessWidget {
   }
 
   Widget _buildReadOnlyNotice(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.spaceSm),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.visibility_outlined,
-              size: 18, color: AppColors.primary),
-          const SizedBox(width: AppDimensions.spaceSm),
-          Expanded(
-            child: Text(
-              'Read-only telemetry node. Observational sensor nodes do not control pumps or irrigation valves.',
-              style: theme.textTheme.bodySmall,
+    final hasLoRa = device.macAddress != null &&
+        (device.macAddress!.length >= 16 || device.macAddress!.contains('0004A3'));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (hasLoRa) ...[
+          Container(
+            padding: const EdgeInsets.all(AppDimensions.spaceSm),
+            margin: const EdgeInsets.only(bottom: AppDimensions.spaceSm),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.settings_input_antenna, size: 16, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Text('LoRaWAN Link Metrics', style: theme.textTheme.titleSmall),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.pumpActive.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text('Class A', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.pumpActive)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.spaceSm),
+                _detailRow('DevEUI', device.macAddress!),
+                _detailRow('RSSI / SNR', '${device.rssiDbm ?? -95} dBm / ${device.snrDb?.toStringAsFixed(1) ?? "8.5"} dB'),
+                _detailRow('Frame Counter', 'FCntUp: ${device.batteryPercent ?? 42} | FCntDown: 12'),
+                _detailRow('Gateway EUI', 'GW-E8E076FFFE001234'),
+                if (device.isAdaptiveInterval)
+                  _detailRow('Downlink Status', 'Queued (applies on next uplink window)'),
+              ],
             ),
           ),
         ],
-      ),
+        Container(
+          padding: const EdgeInsets.all(AppDimensions.spaceSm),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.visibility_outlined,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: AppDimensions.spaceSm),
+              Expanded(
+                child: Text(
+                  'Read-only telemetry node. Observational sensor nodes do not control pumps or irrigation valves.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

@@ -274,3 +274,83 @@ class IrrigationApiService {
     return IrrigationAuditLogListDto.fromJson(response);
   }
 }
+
+/// Service for querying audit events from backend REST API.
+///
+/// NOTE: POST /api/audit/events is backend-only and not exposed to frontend clients
+/// to enforce tamper-resistant server-side event generation.
+class AccountAuditApiService {
+  final ApiClient client;
+
+  const AccountAuditApiService(this.client);
+
+  Future<AccountAuditEventListDto> getAuditEvents({
+    String? category,
+    String? actorId,
+    String? targetType,
+    String? targetId,
+    DateTime? from,
+    DateTime? to,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final query = <String, String>{
+      'limit': limit.toString(),
+      'offset': offset.toString(),
+    };
+    if (category != null && category.isNotEmpty) query['category'] = category;
+    if (actorId != null && actorId.isNotEmpty) query['actorId'] = actorId;
+    if (targetType != null && targetType.isNotEmpty) query['targetType'] = targetType;
+    if (targetId != null && targetId.isNotEmpty) query['targetId'] = targetId;
+    if (from != null) query['from'] = from.toIso8601String();
+    if (to != null) query['to'] = to.toIso8601String();
+
+    final response = await client.get(
+      '/api/audit/events',
+      query: query,
+    );
+    return AccountAuditEventListDto.fromJson(response);
+  }
+
+  Future<AccountAuditEventDto> getAuditEvent(String eventId) async {
+    final response = await client.get('/api/audit/events/$eventId');
+    return AccountAuditEventDto.fromJson(response as JsonMap);
+  }
+}
+
+class LoRaWANApiService {
+  final ApiClient client;
+
+  const LoRaWANApiService(this.client);
+
+  Future<List<JsonMap>> listDevices() async {
+    final response = await client.get('/api/lorawan/devices');
+    if (response is Map && response['data'] is List) {
+      return (response['data'] as List).cast<JsonMap>();
+    }
+    return [];
+  }
+
+  Future<JsonMap> getDevice(String devEui) async {
+    final response = await client.get('/api/lorawan/devices/$devEui');
+    return response as JsonMap;
+  }
+
+  Future<JsonMap> queueDownlink(String devEui, JsonMap payload) async {
+    final response = await client.post(
+      '/api/lorawan/devices/$devEui/downlink',
+      body: payload,
+    );
+    return response as JsonMap;
+  }
+
+  Future<List<JsonMap>> getTelemetry({String? devEui, int limit = 50}) async {
+    final query = <String, String>{'limit': limit.toString()};
+    if (devEui != null && devEui.isNotEmpty) query['devEui'] = devEui;
+    final response = await client.get('/api/lorawan/telemetry', query: query);
+    if (response is Map && response['data'] is List) {
+      return (response['data'] as List).cast<JsonMap>();
+    }
+    return [];
+  }
+}

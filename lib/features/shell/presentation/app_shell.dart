@@ -7,6 +7,7 @@ import '../../control/presentation/control_screen.dart';
 import '../../diagnostics/presentation/device_diagnostics_screen.dart';
 import '../../field/presentation/field_screen.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../irrigation/presentation/manual_control_screen.dart';
 import '../../settings/presentation/settings_screen.dart';
 
 class AppShell extends StatefulWidget {
@@ -23,6 +24,25 @@ class _AppShellState extends State<AppShell> {
     setState(() => _currentIndex = index);
   }
 
+  String _getAppBarTitle(int index) {
+    switch (index) {
+      case 0:
+        return AppStrings.appTitle;
+      case 1:
+        return AppStrings.navField;
+      case 2:
+        return AppStrings.navAnalytics;
+      case 3:
+        return AppStrings.navControl;
+      case 4:
+        return AppStrings.navManualControl;
+      case 5:
+        return AppStrings.navSettings;
+      default:
+        return AppStrings.appTitle;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
@@ -33,21 +53,14 @@ class _AppShellState extends State<AppShell> {
       const FieldScreen(),
       const AnalyticsScreen(),
       const ControlScreen(),
+      const ManualControlScreen(),
       const SettingsScreen(),
     ];
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(
-          _currentIndex == 0
-              ? AppStrings.appTitle
-              : (_currentIndex == 1
-                  ? AppStrings.navField
-                  : (_currentIndex == 2
-                      ? AppStrings.navAnalytics
-                      : (_currentIndex == 3 ? AppStrings.navControl : AppStrings.navSettings))),
-        ),
+        title: Text(_getAppBarTitle(_currentIndex)),
         actions: [
           IconButton(
             icon: const Icon(Icons.health_and_safety_outlined),
@@ -84,6 +97,7 @@ class _AppShellState extends State<AppShell> {
           ),
         ),
         child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
           currentIndex: _currentIndex,
           onTap: _onTabSelected,
           items: const [
@@ -106,6 +120,11 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.settings_remote_outlined),
               activeIcon: Icon(Icons.settings_remote),
               label: AppStrings.navControl,
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.touch_app_outlined),
+              activeIcon: Icon(Icons.touch_app),
+              label: AppStrings.navManualControl,
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_outlined),

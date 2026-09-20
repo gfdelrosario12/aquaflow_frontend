@@ -1,3 +1,4 @@
+import 'lorawan_identity.dart';
 import 'node_enums.dart';
 import 'sensor.dart';
 import 'spatial_coordinates.dart';
@@ -24,6 +25,7 @@ class Esp32Node {
   final double? snrDb;
   final DateTime lastSeen;
   final List<Sensor> sensors;
+  final LoRaWANIdentity? loRaWANIdentity;
 
   // Lifecycle audit and commissioning metadata
   final String? commissioningToken;
@@ -57,6 +59,7 @@ class Esp32Node {
     this.snrDb,
     required this.lastSeen,
     this.sensors = const [],
+    this.loRaWANIdentity,
     this.commissioningToken,
     this.replacedByNodeId,
     this.replacesNodeId,
@@ -136,6 +139,7 @@ class Esp32Node {
     double? snrDb,
     DateTime? lastSeen,
     List<Sensor>? sensors,
+    LoRaWANIdentity? loRaWANIdentity,
     String? commissioningToken,
     String? replacedByNodeId,
     String? replacesNodeId,
@@ -165,6 +169,7 @@ class Esp32Node {
       snrDb: snrDb ?? this.snrDb,
       lastSeen: lastSeen ?? this.lastSeen,
       sensors: sensors ?? this.sensors,
+      loRaWANIdentity: loRaWANIdentity ?? this.loRaWANIdentity,
       commissioningToken: commissioningToken ?? this.commissioningToken,
       replacedByNodeId: replacedByNodeId ?? this.replacedByNodeId,
       replacesNodeId: replacesNodeId ?? this.replacesNodeId,
@@ -196,6 +201,7 @@ class Esp32Node {
         if (snrDb != null) 'snrDb': snrDb,
         'lastSeen': lastSeen.toIso8601String(),
         'sensors': sensors.map((s) => s.toJson()).toList(),
+        if (loRaWANIdentity != null) 'loRaWANIdentity': loRaWANIdentity!.toJson(),
         if (commissioningToken != null) 'commissioningToken': commissioningToken,
         if (replacedByNodeId != null) 'replacedByNodeId': replacedByNodeId,
         if (replacesNodeId != null) 'replacesNodeId': replacesNodeId,
@@ -246,6 +252,11 @@ class Esp32Node {
               ?.map((s) => Sensor.fromJson(s as Map<String, dynamic>))
               .toList() ??
           const [],
+      loRaWANIdentity: json['loRaWANIdentity'] != null
+          ? LoRaWANIdentity.fromJson(
+              json['loRaWANIdentity'] as Map<String, dynamic>,
+            )
+          : null,
       commissioningToken: json['commissioningToken'] as String?,
       replacedByNodeId: json['replacedByNodeId'] as String?,
       replacesNodeId: json['replacesNodeId'] as String?,

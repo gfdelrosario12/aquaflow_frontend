@@ -37,11 +37,14 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
   late final TextEditingController _macController;
+  late final TextEditingController _devEuiController;
+  late final TextEditingController _appKeyController;
   late final TextEditingController _latController;
   late final TextEditingController _lngController;
   late final TextEditingController _localXController;
   late final TextEditingController _localYController;
 
+  bool _isLoRaWANMode = false;
   String _selectedZoneId = 'zone-q1';
   final String _selectedFieldId = 'field-main';
   int _selectedInterval = 300;
@@ -53,6 +56,8 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
     super.initState();
     final first = widget.discoveredNodes.firstOrNull;
     _macController = TextEditingController(text: first?.macAddress ?? '');
+    _devEuiController = TextEditingController(text: '0004A30B001F9876');
+    _appKeyController = TextEditingController(text: '2B7E151628AED2A6ABF7158809CF4F3C');
     _nameController = TextEditingController(
       text: first != null
           ? 'ESP32 Node (${first.macAddress.split(':').last})'
@@ -67,6 +72,8 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
   @override
   void dispose() {
     _macController.dispose();
+    _devEuiController.dispose();
+    _appKeyController.dispose();
     _nameController.dispose();
     _latController.dispose();
     _lngController.dispose();
@@ -83,8 +90,10 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
       _errorMessage = null;
     });
 
+    final macOrDevEui = _isLoRaWANMode ? _devEuiController.text.trim() : _macController.text.trim();
+
     final request = NodeRegistrationRequestDto(
-      macAddress: _macController.text.trim(),
+      macAddress: macOrDevEui,
       displayName: _nameController.text.trim(),
       fieldId: _selectedFieldId,
       zoneId: _selectedZoneId,
@@ -121,7 +130,7 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
           const Icon(Icons.sensors, color: AppColors.primary),
           const SizedBox(width: AppDimensions.spaceSm),
           Text(
-            'Register ESP32 Node',
+            _isLoRaWANMode ? 'Register LoRaWAN Sensor Node' : 'Register ESP32 Node',
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
@@ -150,8 +159,26 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
                   const SizedBox(height: AppDimensions.spaceSm),
                 ],
 
+                // Radio Protocol Toggle
+                Wrap(
+                  spacing: AppDimensions.spaceSm,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Wi-Fi / Bluetooth'),
+                      selected: !_isLoRaWANMode,
+                      onSelected: (selected) => setState(() => _isLoRaWANMode = !selected),
+                    ),
+                    ChoiceChip(
+                      label: const Text('LoRaWAN (RFM95W)'),
+                      selected: _isLoRaWANMode,
+                      onSelected: (selected) => setState(() => _isLoRaWANMode = selected),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: AppDimensions.spaceMd),
+
                 // Discovered nodes picker if any
-                if (widget.discoveredNodes.isNotEmpty) ...[
+                if (!_isLoRaWANMode && widget.discoveredNodes.isNotEmpty) ...[
                   Text(
                     'Discovered Nearby Nodes:',
                     style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
@@ -180,18 +207,45 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
                   const SizedBox(height: AppDimensions.spaceMd),
                 ],
 
-                // Hardware MAC Address
-                TextFormField(
-                  controller: _macController,
-                  decoration: const InputDecoration(
-                    labelText: 'MAC Address *',
-                    hintText: 'AA:BB:CC:DD:EE:FF',
-                    prefixIcon: Icon(Icons.perm_identity, size: 18),
+                if (_isLoRaWANMode) ...[
+                  // 64-bit DevEUI
+                  TextFormField(
+                    controller: _devEuiController,
+                    decoration: const InputDecoration(
+                      labelText: '64-bit DevEUI *',
+                      hintText: 'e.g. 0004A30B001F9876',
+                      prefixIcon: Icon(Icons.developer_board, size: 18),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().length < 16) ? '16-hex DevEUI required' : null,
                   ),
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'MAC Address required' : null,
-                ),
-                const SizedBox(height: AppDimensions.spaceSm),
+                  const SizedBox(height: AppDimensions.spaceSm),
+                  // AppKey
+                  TextFormField(
+                    controller: _appKeyController,
+                    decoration: const InputDecoration(
+                      labelText: '128-bit AppKey *',
+                      hintText: '32-hex Application AES Key',
+                      prefixIcon: Icon(Icons.key, size: 18),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().length < 32) ? '32-hex AppKey required' : null,
+                  ),
+                  const SizedBox(height: AppDimensions.spaceSm),
+                ] else ...[
+                  // Hardware MAC Address
+                  TextFormField(
+                    controller: _macController,
+                    decoration: const InputDecoration(
+                      labelText: 'MAC Address *',
+                      hintText: 'AA:BB:CC:DD:EE:FF',
+                      prefixIcon: Icon(Icons.perm_identity, size: 18),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'MAC Address required' : null,
+                  ),
+                  const SizedBox(height: AppDimensions.spaceSm),
+                ],
 
                 // Display Name
                 TextFormField(
@@ -206,18 +260,20 @@ class _NodeRegistrationDialogState extends State<NodeRegistrationDialog> {
                 ),
                 const SizedBox(height: AppDimensions.spaceSm),
 
-                // Irrigation Zone Assignment
+                // Dynamic Monitoring Zone Assignment
                 DropdownButtonFormField<String>(
                   value: _selectedZoneId,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Assigned Monitoring Zone',
                     prefixIcon: Icon(Icons.grid_view, size: 18),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'zone-q1', child: Text('Q1 (North-East)')),
-                    DropdownMenuItem(value: 'zone-q2', child: Text('Q2 (North-West)')),
-                    DropdownMenuItem(value: 'zone-q3', child: Text('Q3 (South-East)')),
-                    DropdownMenuItem(value: 'zone-q4', child: Text('Q4 (South-West)')),
+                    DropdownMenuItem(value: 'zone-q1', child: Text('Zone 1 (Q1)')),
+                    DropdownMenuItem(value: 'zone-q2', child: Text('Zone 2 (Q2)')),
+                    DropdownMenuItem(value: 'zone-q3', child: Text('Zone 3 (Q3)')),
+                    DropdownMenuItem(value: 'zone-q4', child: Text('Zone 4 (Q4)')),
+                    DropdownMenuItem(value: 'zone-dynamic-east', child: Text('Zone 5 (East)')),
                   ],
                   onChanged: (v) => setState(() => _selectedZoneId = v ?? 'zone-q1'),
                 ),

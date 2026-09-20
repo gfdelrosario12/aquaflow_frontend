@@ -1,3 +1,9 @@
+import '../../features/audit/domain/models/account_audit_event.dart';
+import '../../features/audit/domain/models/audit_actor.dart';
+import '../../features/audit/domain/models/audit_category.dart';
+import '../../features/audit/domain/models/audit_metadata.dart';
+import '../../features/audit/domain/models/audit_result.dart';
+import '../../features/audit/domain/models/audit_target.dart';
 import '../../features/control/domain/models/central_control_telemetry.dart';
 import '../../features/control/domain/models/control_command_result.dart';
 import '../../features/control/domain/models/control_enums.dart';
@@ -511,6 +517,46 @@ class ApiMappers {
       timestamp: domain.timestamp.toIso8601String(),
       failureReason: domain.failureReason,
     );
+  }
+
+  static AuditActor auditActor(AuditActorDto dto) {
+    return AuditActor.fromJson(dto.toJson());
+  }
+
+  static AuditActorDto auditActorDto(AuditActor domain) {
+    return AuditActorDto.fromJson(domain.toJson());
+  }
+
+  static AuditCategory auditCategory(String categoryStr) {
+    return AuditCategory.fromJson(categoryStr);
+  }
+
+  static AuditResult auditResult(String resultStr) {
+    return AuditResult.fromJson(resultStr);
+  }
+
+  static AuditTarget auditTarget(AuditTargetDto dto) {
+    return AuditTarget.fromJson(dto.toJson());
+  }
+
+  static AuditTargetDto auditTargetDto(AuditTarget domain) {
+    return AuditTargetDto.fromJson(domain.toJson());
+  }
+
+  static AuditMetadata auditMetadata(AuditMetadataDto dto) {
+    return AuditMetadata.fromJson(dto.toJson());
+  }
+
+  static AuditMetadataDto auditMetadataDto(AuditMetadata domain) {
+    return AuditMetadataDto.fromJson(domain.toJson());
+  }
+
+  static AccountAuditEvent accountAuditEvent(AccountAuditEventDto dto) {
+    return AccountAuditEvent.fromJson(dto.toJson());
+  }
+
+  static AccountAuditEventDto accountAuditEventDto(AccountAuditEvent domain) {
+    return AccountAuditEventDto.fromJson(domain.toJson());
   }
 
   static String _string(Object? value, {required String fallback}) =>

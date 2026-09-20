@@ -4,6 +4,14 @@ import '../../../../core/services/secure_storage_service.dart';
 import '../datasources/auth_service.dart';
 import '../../domain/models/user_session.dart';
 
+import '../../../audit/data/repositories/account_audit_repository.dart';
+import '../../../audit/domain/models/account_audit_event.dart';
+import '../../../audit/domain/models/audit_actor.dart';
+import '../../../audit/domain/models/audit_category.dart';
+import '../../../audit/domain/models/audit_metadata.dart';
+import '../../../audit/domain/models/audit_result.dart';
+import '../../../audit/domain/models/audit_target.dart';
+
 abstract class AuthRepository {
   Future<UserSession> login(String identifier, String password);
   Future<UserSession?> restoreSession();
@@ -17,14 +25,17 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthService _authService;
   final SecureStorageService _storageService;
   final ApiTokenStore? _tokenStore;
+  final AccountAuditRepository? _auditRepository;
 
   AuthRepositoryImpl({
     AuthService? authService,
     SecureStorageService? storageService,
     ApiTokenStore? tokenStore,
+    AccountAuditRepository? auditRepository,
   })  : _authService = authService ?? MockAuthService(),
         _storageService = storageService ?? SecureStorageServiceImpl(),
-        _tokenStore = tokenStore;
+        _tokenStore = tokenStore,
+        _auditRepository = auditRepository;
 
   @override
   Future<UserSession> login(String identifier, String password) async {
@@ -36,6 +47,32 @@ class AuthRepositoryImpl implements AuthRepository {
     final session = await _authService.login(trimmedId, password);
     await _persistSession(session);
     return session;
+    try {
+      final session = await _authService.login(trimmedId, password);
+      await _persistSession(session);
+      await _auditRepository?.emitAuditEvent(AccountAuditEvent(
+        eventId: 'aud-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        actor: AuditActor.user(session.userId, session.username),
+        category: AuditCategory.authentication,
+        action: 'auth.login.success',
+        target: AuditTarget(type: 'session', id: session.userId, displayName: 'User Session'),
+        result: AuditResult.success,
+      ));
+      return session;
+    } catch (e) {
+      await _auditRepository?.emitAuditEvent(AccountAuditEvent(
+        eventId: 'aud-${DateTime.now().millisecondsSinceEpoch}',
+        timestamp: DateTime.now(),
+        actor: AuditActor.user(trimmedId, trimmedId),
+        category: AuditCategory.authentication,
+        action: 'auth.login.failed',
+        target: AuditTarget(type: 'session', id: trimmedId),
+        result: AuditResult.failed,
+        metadata: AuditMetadata(failureReason: e.toString()),
+      ));
+      rethrow;
+    }
   }
 
   @override

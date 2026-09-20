@@ -98,6 +98,7 @@ class RealtimeCoordinator extends ChangeNotifier with WidgetsBindingObserver {
 
   RealtimeState get state => _state;
   Stream<RealtimeEvent> get events => _eventController.stream;
+  Stream<RealtimeEvent> get eventStream => _eventController.stream;
   Stream<Object> get errors => _errorController.stream;
   Map<String, RealtimeEvent> get latestEvents => Map.unmodifiable(_latestEvents);
 

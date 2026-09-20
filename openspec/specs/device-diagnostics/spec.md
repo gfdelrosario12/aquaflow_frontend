@@ -38,11 +38,15 @@ The system SHALL model and display system health using standardized diagnostic s
 - **THEN** the system updates its health badge to Degraded or Offline and highlights recommended diagnostic steps.
 
 ### Requirement: Dynamic ESP32 node diagnostic telemetry and interval inspection
-The system SHALL present diagnostic telemetry for all registered dynamic ESP32 nodes, including node MAC address, online/offline status, battery percentage and voltage, RSSI, SNR, last seen timestamp, active transmission interval, adaptive rate status, and spatial coordinates.
+The system SHALL present diagnostic telemetry for all registered dynamic sensor nodes (Wi-Fi ESP32 and LoRaWAN end-devices), including node hardware address/DevEUI, online/offline status, battery percentage and voltage, RSSI, SNR, frame counters (`fCntUp`, `fCntDown`), gateway ID, last seen timestamp, active transmission interval, adaptive rate status, and spatial coordinates.
 
 #### Scenario: Inspecting dynamic ESP32 node diagnostic health
 - **WHEN** the user opens the Device Diagnostics screen and selects a registered ESP32 node
 - **THEN** the diagnostic inspector displays the node's MAC address, signal metrics, battery voltage, active transmission interval, and coordinates.
+
+#### Scenario: Inspecting LoRaWAN sensor node diagnostic metrics
+- **WHEN** the user inspects diagnostic details for a registered LoRaWAN sensor node
+- **THEN** the diagnostic inspector displays `devEui`, link quality metrics (RSSI, SNR), uplink frame counter `fCntUp`, downlink frame counter `fCntDown`, receiving gateway ID, battery voltage, and active reporting interval.
 
 ### Requirement: Direct node interval configuration entrypoint
 The system SHALL provide an authorized action trigger within the device diagnostics detail inspector allowing operators to adjust the node's transmission interval or view adaptive rate history.

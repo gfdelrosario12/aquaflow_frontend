@@ -5,7 +5,9 @@ import '../../domain/models/auto_irrigation_config.dart';
 import '../../domain/models/auto_irrigation_status.dart';
 import '../../domain/models/centralized_irrigation.dart';
 import '../../domain/models/irrigation_execution_audit_log.dart';
+import '../../domain/models/manual_irrigation_control.dart';
 import '../datasources/irrigation_data_source.dart';
+
 
 abstract class IrrigationRepository {
   Future<CentralizedIrrigation> fetchSystemStatus();
@@ -25,6 +27,10 @@ abstract class IrrigationRepository {
     int limit = 50,
   });
   Future<void> logExecution(IrrigationExecutionAuditLog log);
+
+  Future<bool> dispatchManualStart(ManualIrrigationCommand command);
+  Future<bool> dispatchManualStop({required String operatorId, String? rationale});
+  Future<bool> dispatchEmergencyStop({required String operatorId, String? rationale});
 }
 
 class IrrigationRepositoryImpl implements IrrigationRepository {
@@ -133,5 +139,25 @@ class IrrigationRepositoryImpl implements IrrigationRepository {
   @override
   Future<void> logExecution(IrrigationExecutionAuditLog log) async {
     return _dataSource.addAuditLog(log);
+  }
+
+  @override
+  Future<bool> dispatchManualStart(ManualIrrigationCommand command) async {
+    await updateSystemMode(SystemMode.manual);
+    await toggleMainPump(true);
+    return true;
+  }
+
+  @override
+  Future<bool> dispatchManualStop({required String operatorId, String? rationale}) async {
+    await toggleMainPump(false);
+    return true;
+  }
+
+  @override
+  Future<bool> dispatchEmergencyStop({required String operatorId, String? rationale}) async {
+    await toggleMainPump(false);
+    await updateSystemMode(SystemMode.manual);
+    return true;
   }
 }

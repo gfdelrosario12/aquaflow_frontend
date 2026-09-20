@@ -40,6 +40,12 @@ class Measurement {
 
   bool get isValid => qualityFlag == MeasurementQuality.valid;
 
+  /// UTC server-normalized timestamp for synchronized time-series processing.
+  DateTime get serverNormalizedTimestamp => timestamp.toUtc();
+
+  /// Optional LoRaWAN 64-bit DevEUI identifier associated with this measurement uplink.
+  String? get devEui => metadata?['devEui'] as String?;
+
   Measurement copyWith({
     String? id,
     DateTime? timestamp,

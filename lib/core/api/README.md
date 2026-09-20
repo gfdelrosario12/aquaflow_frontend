@@ -19,3 +19,10 @@ API services decode endpoint responses into DTOs; repository adapters map DTOs i
 Use `ApiRepositoryFactory` to share one configured client across resource services. Existing mock repositories remain valid for tests and offline development.
 
 Irrigation commands are intentionally non-retryable and require `ENTIRE FIELD`. Q1-Q4 identifiers are valid only for monitoring queries. The mobile app has no LoRaWAN, radio, BLE, or direct gateway hardware transport.
+
+## Account Audit API Endpoints
+
+- `GET /api/audit/events`: Query paginated audit history filtered by category, actorId, targetType, targetId, and time range. Restrict read access to `fieldAdmin` role.
+- `GET /api/audit/events/{id}`: Fetch full detail and metadata for a specific audit event.
+- `POST /api/audit/events`: **Backend-only** emission endpoint. Enforces server-side tamper resistance; not exposed to mobile/frontend clients.
+

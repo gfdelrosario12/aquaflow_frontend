@@ -11,6 +11,9 @@ enum RealtimeEventType {
   nodeDiscovered,
   nodeLifecycleUpdated,
   nodeReplaced,
+  auditEvent,
+  lorawanTelemetry,
+  lorawanDeviceStatus,
 }
 
 class RealtimeValidationException implements Exception {
@@ -101,7 +104,9 @@ class RealtimeEvent {
         type == RealtimeEventType.nodeStatus ||
         type == RealtimeEventType.transmissionIntervalUpdated ||
         type == RealtimeEventType.nodeLifecycleUpdated ||
-        type == RealtimeEventType.nodeReplaced) {
+        type == RealtimeEventType.nodeReplaced ||
+        type == RealtimeEventType.lorawanTelemetry ||
+        type == RealtimeEventType.lorawanDeviceStatus) {
       if (!isMonitoringScope) {
         throw RealtimeValidationException(
       '${type.name} events require valid monitoring or node scope.',
@@ -152,6 +157,16 @@ class RealtimeEvent {
       case 'node_replaced':
       case 'nodeReplaced':
         return RealtimeEventType.nodeReplaced;
+      case 'audit_event':
+      case 'auditEvent':
+      case 'audit':
+        return RealtimeEventType.auditEvent;
+      case 'lorawan_telemetry':
+      case 'lorawanTelemetry':
+        return RealtimeEventType.lorawanTelemetry;
+      case 'lorawan_device_status':
+      case 'lorawanDeviceStatus':
+        return RealtimeEventType.lorawanDeviceStatus;
       default:
         throw RealtimeValidationException('Unsupported event type: $value.');
     }

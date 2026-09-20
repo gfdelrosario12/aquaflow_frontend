@@ -1,4 +1,5 @@
 export 'esp32_node.dart';
+export 'lorawan_identity.dart';
 export 'measurement.dart';
 export 'monitoring_point.dart';
 export 'node_discovery_info.dart';
