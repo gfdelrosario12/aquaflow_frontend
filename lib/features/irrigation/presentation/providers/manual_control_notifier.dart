@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../../core/realtime/realtime_coordinator.dart';
+import '../../../../core/realtime/realtime_events.dart';
+
 import '../../../audit/data/repositories/account_audit_repository.dart';
 import '../../../audit/domain/models/account_audit_event.dart';
 import '../../../audit/domain/models/audit_actor.dart';
@@ -336,14 +338,28 @@ class ManualControlNotifier extends ChangeNotifier {
   void _subscribeToRealtime() {
     if (_realtimeCoordinator == null) return;
     _realtimeCoordinator.events.listen((envelope) {
-      if (envelope.type.name == 'manualIrrigationState' ||
-          envelope.type.name == 'irrigationState') {
+      if (envelope.type == RealtimeEventType.manualControlExecuted ||
+          envelope.type == RealtimeEventType.irrigationState ||
+          envelope.type == RealtimeEventType.irrigationEvent) {
         try {
           final payload = Map<String, dynamic>.from(envelope.payload);
+          final action = payload['action'] as String?;
           final mode = payload['modeState'] as String?;
-          if (mode == 'emergencyStopped') {
+          if (mode == 'emergencyStopped' || action == 'emergency_stop') {
             _state = _state.copyWith(
               modeState: ManualOverrideModeState.emergencyStopped,
+            );
+            notifyListeners();
+          } else if (action == 'start' || mode == 'active') {
+            _state = _state.copyWith(
+              modeState: ManualOverrideModeState.active,
+              targetDurationMinutes: (payload['durationMinutes'] as int?) ?? _state.targetDurationMinutes,
+            );
+            notifyListeners();
+          } else if (action == 'stop' || mode == 'idle') {
+            _state = _state.copyWith(
+              modeState: ManualOverrideModeState.idle,
+              clearActiveCommand: true,
             );
             notifyListeners();
           }

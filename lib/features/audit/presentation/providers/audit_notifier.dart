@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../../core/realtime/realtime_coordinator.dart';
+import '../../../../core/realtime/realtime_events.dart';
+
 import '../../data/repositories/account_audit_repository.dart';
 import '../../domain/models/account_audit_event.dart';
 import '../../domain/models/audit_category.dart';
@@ -182,7 +184,7 @@ class AuditNotifier extends ValueNotifier<AuditStateData> {
     if (_realtimeCoordinator == null) return;
     _realtimeCoordinator.events.listen((envelope) {
       if (!value.isLiveFeedActive) return;
-      if (envelope.type.name == 'auditEvent' || envelope.type.name == 'audit') {
+      if (envelope.type == RealtimeEventType.auditEvent) {
         try {
           final event = AccountAuditEvent.fromJson(
             Map<String, dynamic>.from(envelope.payload),

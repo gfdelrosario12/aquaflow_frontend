@@ -14,6 +14,8 @@ enum RealtimeEventType {
   auditEvent,
   lorawanTelemetry,
   lorawanDeviceStatus,
+  manualControlExecuted,
+  awdAnalysisCompleted,
 }
 
 class RealtimeValidationException implements Exception {
@@ -90,10 +92,21 @@ class RealtimeEvent {
     return event;
   }
 
+  Map<String, dynamic> toJson() => {
+        'version': version,
+        'eventId': eventId,
+        'eventType': _eventTypeToString(type),
+        'occurredAt': occurredAt.toIso8601String(),
+        'sequence': sequence,
+        'scope': scope,
+        'payload': payload,
+      };
+
   void _validateScope() {
     final irrigationEvent = type == RealtimeEventType.irrigationState ||
         type == RealtimeEventType.irrigationEvent ||
-        type == RealtimeEventType.controllerEvent;
+        type == RealtimeEventType.controllerEvent ||
+        type == RealtimeEventType.manualControlExecuted;
     if (irrigationEvent && !isEntireField) {
       throw RealtimeValidationException(
         '${type.name} events require ENTIRE FIELD scope.',
@@ -109,8 +122,8 @@ class RealtimeEvent {
         type == RealtimeEventType.lorawanDeviceStatus) {
       if (!isMonitoringScope) {
         throw RealtimeValidationException(
-      '${type.name} events require valid monitoring or node scope.',
-    );
+          '${type.name} events require valid monitoring or node scope.',
+        );
       }
     }
   }
@@ -124,6 +137,45 @@ class RealtimeEvent {
         'scope': scope,
         'payloadKeys': payload.keys.toList(growable: false),
       };
+
+  static String _eventTypeToString(RealtimeEventType type) {
+    switch (type) {
+      case RealtimeEventType.measurement:
+        return 'measurement';
+      case RealtimeEventType.sensorStatus:
+        return 'sensor_status';
+      case RealtimeEventType.gatewayStatus:
+        return 'gateway_status';
+      case RealtimeEventType.irrigationState:
+        return 'irrigation_state';
+      case RealtimeEventType.irrigationEvent:
+        return 'irrigation_event';
+      case RealtimeEventType.controllerEvent:
+        return 'controller_event';
+      case RealtimeEventType.alert:
+        return 'alert';
+      case RealtimeEventType.nodeStatus:
+        return 'node_status';
+      case RealtimeEventType.transmissionIntervalUpdated:
+        return 'transmission_interval_updated';
+      case RealtimeEventType.nodeDiscovered:
+        return 'node_discovered';
+      case RealtimeEventType.nodeLifecycleUpdated:
+        return 'node_lifecycle_updated';
+      case RealtimeEventType.nodeReplaced:
+        return 'node_replaced';
+      case RealtimeEventType.auditEvent:
+        return 'audit_event';
+      case RealtimeEventType.lorawanTelemetry:
+        return 'lorawan_telemetry';
+      case RealtimeEventType.lorawanDeviceStatus:
+        return 'lorawan_device_status';
+      case RealtimeEventType.manualControlExecuted:
+        return 'manual_control_executed';
+      case RealtimeEventType.awdAnalysisCompleted:
+        return 'awd_analysis_completed';
+    }
+  }
 
   static RealtimeEventType _eventType(String value) {
     switch (value) {
@@ -167,6 +219,12 @@ class RealtimeEvent {
       case 'lorawan_device_status':
       case 'lorawanDeviceStatus':
         return RealtimeEventType.lorawanDeviceStatus;
+      case 'manual_control_executed':
+      case 'manualControlExecuted':
+        return RealtimeEventType.manualControlExecuted;
+      case 'awd_analysis_completed':
+      case 'awdAnalysisCompleted':
+        return RealtimeEventType.awdAnalysisCompleted;
       default:
         throw RealtimeValidationException('Unsupported event type: $value.');
     }

@@ -1,13 +1,4 @@
-## Purpose
-
-Provides backend-mediated real-time updates for AquaSense monitoring, diagnostics, alerts, analytics, and centralized irrigation state with validated events, lifecycle-aware connectivity, fallback behavior, and strict scope isolation.
-## Requirements
-### Requirement: Backend-mediated real-time transport
-The system SHALL provide a real-time service that connects the Flutter application to backend-published events through an authenticated channel such as WebSocket. The mobile app MUST NOT connect directly to LoRaWAN, MQTT brokers, radio hardware, BLE devices, or gateways.
-
-#### Scenario: App establishes an authenticated real-time session
-- **WHEN** an authenticated operator brings the app to the foreground
-- **THEN** the real-time service connects to the backend channel, authenticates the session, subscribes to authorized event streams, and exposes its connection state.
+## MODIFIED Requirements
 
 ### Requirement: Typed event coverage
 The system SHALL support validated real-time events for dynamic node discovery, node status changes, dynamic node replacement/reassignment, LoRaWAN telemetry, LoRaWAN device status, AWD analysis updates, centralized irrigation state changes, manual control operation events, automatic irrigation events, controller events, alerts, and audit log entries across Flutter Android and Web platforms.
@@ -51,17 +42,6 @@ The system SHALL validate event version, event ID, event type, timestamp, sequen
 - **WHEN** an irrigation, manual control, or controller event contains a zone-specific identifier instead of `ENTIRE FIELD`
 - **THEN** the real-time service rejects the event with a validation error and does not mutate irrigation control state.
 
-### Requirement: Duplicate and out-of-order event handling
-The system SHALL suppress duplicate event IDs and SHALL prevent older sequence or timestamp values from overwriting newer state for the same aggregate.
-
-#### Scenario: Duplicate event is delivered after reconnect
-- **WHEN** the same event ID is received more than once
-- **THEN** only the first valid event changes application state.
-
-#### Scenario: Delayed event arrives after newer state
-- **WHEN** an event has an older sequence or timestamp than the latest accepted event for its aggregate
-- **THEN** the service does not regress displayed state and exposes stale/out-of-order diagnostics when appropriate.
-
 ### Requirement: Connection lifecycle and reconnect behavior
 The system SHALL expose disconnected, connecting, connected, reconnecting, degraded, and closed states, SHALL reconnect with exponential backoff while foregrounded, SHALL bootstrap current state from authoritative REST endpoints upon successful reconnection, and SHALL close or pause the channel on logout/background lifecycle transitions.
 
@@ -87,22 +67,4 @@ The system SHALL gracefully fall back to REST polling or the last valid cached s
 #### Scenario: Channel recovers after polling
 - **WHEN** a healthy real-time connection is re-established
 - **THEN** the service performs a bootstrap resynchronization, stops redundant fallback polling, and returns to connected event-driven updates.
-
-### Requirement: Reactive feature state updates
-The system SHALL fan validated real-time events into existing monitoring, diagnostics, alert, analytics, and centralized irrigation state abstractions so relevant screens update without manual refresh.
-
-#### Scenario: Measurement and alert arrive while a screen is open
-- **WHEN** a valid measurement and alert event are received
-- **THEN** the field/analytics and alert state providers notify their listeners and the visible screens reflect the updates.
-
-### Requirement: Centralized irrigation event scope
-The system SHALL allow Q1-Q4 identifiers only for monitoring event context. Irrigation state changes, irrigation events, and controller events MUST represent the single centralized system with scope `ENTIRE FIELD`; real-time events MUST NOT create zone-specific irrigation controls.
-
-#### Scenario: Invalid zone-scoped irrigation event is received
-- **WHEN** an irrigation or controller event contains Q1, Q2, Q3, Q4, or another zone-specific actuator scope
-- **THEN** the service rejects the event, records a validation error, and does not expose or create a zone-level control state.
-
-#### Scenario: Central irrigation event is received
-- **WHEN** a valid irrigation or controller event identifies `ENTIRE FIELD`
-- **THEN** the centralized irrigation state is updated and existing field-level control views receive the event without creating per-zone actuators.
 

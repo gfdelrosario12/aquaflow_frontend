@@ -9,6 +9,8 @@ export 'error_state_widget.dart';
 export 'loading_state_widget.dart';
 export 'offline_banner.dart';
 export 'responsive_container.dart';
+export 'realtime_status_indicator.dart';
 export 'sensor_metric_tile.dart';
 export 'simulated_telemetry_chart.dart';
 export 'status_badge.dart';
+
