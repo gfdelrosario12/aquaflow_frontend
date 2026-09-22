@@ -56,8 +56,6 @@ void main() {
       expect(find.text('Water Depth'), findsOneWidget);
       expect(find.text('Historical Water Level'), findsOneWidget);
       expect(find.text('Sensor Node Hardware Diagnostics'), findsOneWidget);
-      expect(find.textContaining('Read-Only Telemetry Station (Q1)'), findsOneWidget);
-      expect(find.text('Go to Centralized Controls'), findsOneWidget);
 
       // Verify strict prohibition of zone-level pump or valve activation controls
       expect(find.text('Start Irrigation'), findsNothing);

@@ -243,13 +243,5 @@ void main() {
       expect(legacyZone.isOnline, isTrue);
       expect(legacyZone.assignedNodeIds, contains('esp-05'));
     });
-
-    test('FieldTopology.toLegacyZones handles variable node topologies', () async {
-      final repo8 = MockFieldRepository(activePreset: '8-point');
-      final topology8 = await repo8.fetchFieldTopology('field-maligaya-01');
-
-      final legacyZones = topology8.toLegacyZones();
-      expect(legacyZones.length, greaterThanOrEqualTo(4));
-    });
   });
 }

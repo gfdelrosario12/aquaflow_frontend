@@ -125,7 +125,7 @@ class AwdRuleEngine {
           if (flaggedOutliers.isNotEmpty) AwdInhibitionReason.criticalOutliers,
         ],
         summaryRationale:
-            'Automated centralized irrigation is inhibited due to insufficient reporting monitoring nodes.',
+            'Edge node autonomous irrigation is inhibited due to insufficient reporting monitoring nodes.',
         evaluatedAt: timestamp,
       );
 
@@ -252,7 +252,7 @@ class AwdRuleEngine {
       urgency = RecommendationUrgency.high;
       title = 'High Zone Disparity: Field Inspection Advised';
       rationale =
-          'Severe water depth disparity detected across monitoring zones (${depthSpread.toStringAsFixed(1)} cm spread). Zone(s) ${lowZones.join(', ')} require reflood, but zone(s) ${floodedZones.join(', ')} remain flooded (+${maxWaterDepth.toStringAsFixed(1)} cm). Centralized irrigation would flood already inundated areas. Inspect bunds, drainage, and field leveling before pumping.';
+          'Severe water depth disparity detected across monitoring zones (${depthSpread.toStringAsFixed(1)} cm spread). Zone(s) ${lowZones.join(', ')} require reflood, but zone(s) ${floodedZones.join(', ')} remain flooded (+${maxWaterDepth.toStringAsFixed(1)} cm). Node irrigation is paused to prevent over-flooding. Inspect bunds, drainage, and field leveling.';
       keyFactors = [
         'Water depth spread: ${depthSpread.toStringAsFixed(1)} cm (Limit: ${config.maxAllowedSpreadCm.toStringAsFixed(1)} cm).',
         'Drying zones: ${lowZones.join(', ')} (Min: ${minWaterDepth.toStringAsFixed(1)} cm).',
@@ -264,9 +264,9 @@ class AwdRuleEngine {
         case FieldAwdStatus.criticalDryness:
           action = IrrigationAction.irrigate;
           urgency = RecommendationUrgency.critical;
-          title = 'Critical Dryness: Immediate Reflood Required';
+          title = 'Critical Dryness: Edge Node Autonomous Reflood Triggered';
           rationale =
-              'One or more monitoring zones (${lowZones.isNotEmpty ? lowZones.join(', ') : 'field area'}) have reached critical soil water depletion below ${config.criticalDrynessThresholdCm.toStringAsFixed(1)} cm. Initiate centralized field irrigation immediately to avoid crop yield loss.';
+              'One or more monitoring zones (${lowZones.isNotEmpty ? lowZones.join(', ') : 'field area'}) have reached critical soil water depletion below ${config.criticalDrynessThresholdCm.toStringAsFixed(1)} cm. Edge nodes run autonomous field irrigation immediately to avoid crop yield loss.';
           keyFactors = [
             'Minimum zone water depth: ${minWaterDepth.toStringAsFixed(1)} cm (Threshold: ${config.criticalDrynessThresholdCm} cm).',
             'Field average water depth: ${averageWaterDepth.toStringAsFixed(1)} cm.',
@@ -278,12 +278,12 @@ class AwdRuleEngine {
         case FieldAwdStatus.refloodNeeded:
           action = IrrigationAction.irrigate;
           urgency = RecommendationUrgency.high;
-          title = 'Centralized Irrigation Recommended';
+          title = 'Edge Node Autonomous Irrigation Active';
           final stageNote = config.cropStage == CropGrowthStage.reproductive
               ? ' (reproductive stage: standing water required)'
               : (config.cropStage == CropGrowthStage.ripening ? ' (ripening stage)' : '');
           rationale =
-              'Field drying has reached the active AWD reflood threshold (${config.refloodTriggerCm.toStringAsFixed(1)} cm)$stageNote. ${lowZones.isNotEmpty ? 'Zones ${lowZones.join(', ')} have reached the trigger point.' : 'Field average depth is ${averageWaterDepth.toStringAsFixed(1)} cm.'} Activate centralized irrigation to restore target water depth of +${config.targetFloodDepthCm.toStringAsFixed(1)} cm.';
+              'Field drying has reached the active AWD reflood threshold (${config.refloodTriggerCm.toStringAsFixed(1)} cm)$stageNote. ${lowZones.isNotEmpty ? 'Zones ${lowZones.join(', ')} have reached the trigger point.' : 'Field average depth is ${averageWaterDepth.toStringAsFixed(1)} cm.'} Edge nodes trigger irrigation to restore target water depth of +${config.targetFloodDepthCm.toStringAsFixed(1)} cm.';
           keyFactors = [
             'Reflood trigger threshold: ${config.refloodTriggerCm.toStringAsFixed(1)} cm.',
             'Target post-irrigation flood depth: +${config.targetFloodDepthCm.toStringAsFixed(1)} cm.',
@@ -297,7 +297,7 @@ class AwdRuleEngine {
           urgency = RecommendationUrgency.low;
           title = 'Maintain Safe Drying Cycle';
           rationale =
-              'Field water levels are within safe AWD drying boundaries (Average: ${averageWaterDepth.toStringAsFixed(1)} cm). Soil aeration is promoting root health. Centralized irrigation is not recommended at this time.';
+              'Field water levels are within safe AWD drying boundaries (Average: ${averageWaterDepth.toStringAsFixed(1)} cm). Soil aeration is promoting root health. Edge node autonomous irrigation remains idle.';
           keyFactors = [
             'Field average depth: ${averageWaterDepth.toStringAsFixed(1)} cm (Safe limit: ${config.safeDryThresholdCm.toStringAsFixed(1)} cm).',
             'Soil moisture average: ${averageMoisture.toStringAsFixed(1)}%.',
@@ -315,7 +315,7 @@ class AwdRuleEngine {
           keyFactors = [
             'Field standing water depth: +${averageWaterDepth.toStringAsFixed(1)} cm.',
             'Highest zone level: +${maxWaterDepth.toStringAsFixed(1)} cm.',
-            'Centralized pump: Keep idle to save energy and water.',
+            'Edge node decision: Irrigation kept idle to save energy and water.',
           ];
           break;
       }
@@ -430,11 +430,11 @@ class AwdRuleEngine {
       );
       if (recommendedDuration < 15) recommendedDuration = 15;
       summary =
-          'Field water deficit of ${deficit.toStringAsFixed(1)} cm qualifies for automated reflood. Target runtime: $recommendedDuration minutes to reach +${config.targetFloodDepthCm.toStringAsFixed(1)} cm.';
+          'Field water deficit of ${deficit.toStringAsFixed(1)} cm qualifies for edge node autonomous reflood. Target runtime: $recommendedDuration minutes to reach +${config.targetFloodDepthCm.toStringAsFixed(1)} cm.';
     } else {
       final descriptions =
           reasons.map(AwdInhibitionReason.toHumanDescription).join(' ');
-      summary = 'Automated irrigation inhibited: $descriptions';
+      summary = 'Edge node autonomous irrigation inhibited: $descriptions';
     }
 
     return AwdAutomationEligibility(

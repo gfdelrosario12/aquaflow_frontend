@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/widgets/aqua_button.dart';
 import '../../../../core/widgets/aqua_card.dart';
 import '../../../../core/widgets/sensor_metric_tile.dart';
 import '../../../../core/widgets/status_badge.dart';
@@ -9,12 +8,10 @@ import '../../../irrigation/domain/models/centralized_irrigation.dart';
 
 class CentralIrrigationOverviewCard extends StatelessWidget {
   final CentralizedIrrigation system;
-  final VoidCallback? onNavigateToControl;
 
-  const CentralIrrigationOverviewCard({
+  CentralIrrigationOverviewCard({
     super.key,
     required this.system,
-    this.onNavigateToControl,
   });
 
   @override
@@ -55,7 +52,7 @@ class CentralIrrigationOverviewCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Centralized Irrigation System',
+                            'Autonomous Edge Irrigation',
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -63,7 +60,7 @@ class CentralIrrigationOverviewCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            'Single Field-Wide Operational Unit',
+                            'Edge Node-Driven Automated Execution',
                             style: theme.textTheme.bodySmall?.copyWith(fontSize: 10),
                           ),
                         ],
@@ -107,13 +104,6 @@ class CentralIrrigationOverviewCard extends StatelessWidget {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: AppDimensions.spaceMd),
-          AquaButton(
-            label: 'Manage Centralized Control',
-            icon: Icons.settings_remote,
-            variant: AquaButtonVariant.outline,
-            onPressed: onNavigateToControl,
           ),
         ],
       ),

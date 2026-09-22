@@ -31,7 +31,7 @@ void main() {
       // Screen title and key section headers
       expect(find.text('AquaSense AWD Analytics'), findsOneWidget);
       expect(find.text('Field-Wide AWD Condition'), findsOneWidget);
-      expect(find.text('Centralized Field Decision'), findsOneWidget);
+      expect(find.text('Node Autonomous Decision'), findsOneWidget);
       expect(find.text('Configurable AWD Threshold Rules'), findsOneWidget);
 
       // Confidence badge and crop growth stage

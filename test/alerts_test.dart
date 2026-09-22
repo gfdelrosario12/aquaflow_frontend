@@ -142,7 +142,7 @@ void main() {
 
       expect(find.text('Alert Details'), findsOneWidget);
       expect(find.text('SCOPE: ENTIRE FIELD'), findsOneWidget);
-      expect(find.text('Open Control Screen'), findsOneWidget);
+      expect(find.text('Open Manual Control'), findsOneWidget);
     });
   });
 }

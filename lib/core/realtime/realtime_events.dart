@@ -51,11 +51,8 @@ class RealtimeEvent {
   String get aggregateKey => scope;
 
   bool get isMonitoringScope {
-    if (const {'Q1', 'Q2', 'Q3', 'Q4'}.contains(scope)) return true;
-    // Reject legacy quadrant-like scopes outside Q1–Q4.
-    if (RegExp(r'^Q\d+$').hasMatch(scope)) return false;
     if (scope.startsWith('NODE-') || scope.startsWith('ESP32-')) return true;
-    // Dynamic node aggregate keys (alphanumeric identifiers).
+    // Dynamic node/monitoring point aggregate keys (alphanumeric identifiers).
     return RegExp(r'^[A-Za-z][A-Za-z0-9_\-\.:]{2,}$').hasMatch(scope);
   }
 

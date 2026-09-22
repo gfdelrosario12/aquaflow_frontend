@@ -11,24 +11,21 @@ import '../../../zones/presentation/zone_analysis_screen.dart';
 
 class ZoneDetailBottomSheet extends StatelessWidget {
   final zone_models.MonitoringZone zone;
-  final VoidCallback? onNavigateToControl;
   final List<Esp32Node> assignedNodes;
   final ControlUserRole userRole;
   final Future<void> Function(Esp32Node node)? onConfigureInterval;
 
-  const ZoneDetailBottomSheet({
+  ZoneDetailBottomSheet({
     super.key,
     required this.zone,
-    this.onNavigateToControl,
     this.assignedNodes = const [],
     this.userRole = ControlUserRole.operator,
     this.onConfigureInterval,
   });
 
-  static void show(
+static void show(
     BuildContext context, {
     required zone_models.MonitoringZone zone,
-    VoidCallback? onNavigateToControl,
     List<Esp32Node> assignedNodes = const [],
     ControlUserRole userRole = ControlUserRole.operator,
     Future<void> Function(Esp32Node node)? onConfigureInterval,
@@ -39,7 +36,6 @@ class ZoneDetailBottomSheet extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => ZoneDetailBottomSheet(
         zone: zone,
-        onNavigateToControl: onNavigateToControl,
         assignedNodes: assignedNodes,
         userRole: userRole,
         onConfigureInterval: onConfigureInterval,
@@ -404,22 +400,9 @@ class ZoneDetailBottomSheet extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Monitoring zones do not contain individual pump or valve controls. Centralized irrigation serves the entire field as a single operational unit.',
+                    'Monitoring zones provide telemetry inputs to edge node autonomous irrigation decisions. No individual pump or valve controls exist at the zone level.',
                     style: theme.textTheme.bodySmall,
                   ),
-                  if (onNavigateToControl != null) ...[
-                    const SizedBox(height: AppDimensions.spaceSm),
-                    AquaButton(
-                      label: 'Go to Centralized Controls',
-                      icon: Icons.settings_remote,
-                      variant: AquaButtonVariant.outline,
-                      isFullWidth: false,
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        onNavigateToControl?.call();
-                      },
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -34,16 +34,11 @@ class AppColors {
   static const Color textSecondary = darkTextSecondary;
   static const Color textMuted = darkTextMuted;
 
-  // 1. Monitoring Telemetry Status (Zone Q1-Q4)
+  // 1. Monitoring Telemetry Status (Monitoring Zones)
   static const Color zoneOptimal = Color(0xFF10B981); // Emerald
   static const Color zoneLow = Color(0xFFF59E0B);     // Amber
   static const Color zoneCritical = Color(0xFFEF4444); // Red/Coral
   static const Color zoneOffline = Color(0xFF6B7280);  // Slate Grey
-
-  // Legacy zone aliases
-  static const Color moistureOptimal = zoneOptimal;
-  static const Color moistureLow = zoneLow;
-  static const Color moistureCritical = zoneCritical;
 
   // 2. AWD Analysis Status
   static const Color awdSafe = Color(0xFF06B6D4);      // Cyan

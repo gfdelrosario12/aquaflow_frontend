@@ -86,6 +86,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap quadrant Q1 card
+      await tester.ensureVisible(find.text('Q1').first);
       await tester.tap(find.text('Q1').first);
       await tester.pumpAndSettle();
 

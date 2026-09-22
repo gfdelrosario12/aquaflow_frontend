@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../core/api/api_dtos.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../../main.dart';
 import '../../auth/presentation/controllers/auth_controller.dart';
 import '../../diagnostics/presentation/device_diagnostics_screen.dart';
+import '../../nodes/domain/models/models.dart';
+import '../../nodes/presentation/widgets/node_registration_dialog.dart';
 import '../domain/models/settings_models.dart';
 import 'providers/settings_provider.dart';
 
@@ -62,6 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (state.status == SettingsLoadStatus.saving) _buildSavingBanner(),
                   _buildAccountSection(context, state.settings.account),
                   const SizedBox(height: AppDimensions.spaceMd),
+                  _buildNodePairingSection(context),
+                  const SizedBox(height: AppDimensions.spaceMd),
                   _buildNotificationSection(context, state.settings.notifications),
                   const SizedBox(height: AppDimensions.spaceMd),
                   _buildUnitsSection(context, state.settings.measurementUnit),
@@ -87,6 +92,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildNodePairingSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return _section(
+      context,
+      'Hardware Node Pairing & Discovery',
+      Icons.sensors_outlined,
+      [
+        Row(
+          children: [
+            const Icon(Icons.bluetooth_searching, size: 20, color: AppColors.primary),
+            const SizedBox(width: AppDimensions.spaceSm),
+            Expanded(
+              child: Text(
+                'Press the physical pairing button on your sensor node hardware to activate discoverable mode.',
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppDimensions.spaceSm),
+        AquaButton(
+          label: 'Discover & Pair Hardware Node',
+          icon: Icons.search,
+          variant: AquaButtonVariant.primary,
+          onPressed: () => _handleNodePairing(context),
+        ),
+        const SizedBox(height: AppDimensions.spaceXs),
+        Text(
+          'Discovered nodes can be dynamically assigned to new or existing monitoring zones.',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleNodePairing(BuildContext context) async {
+    final mockDiscovered = [
+      NodeDiscoveryInfo(
+        id: 'disc-1',
+        macAddress: 'AA:BB:CC:DD:EE:99',
+        hardwareModel: 'ESP32 LoRa Node',
+        firmwareVersion: '1.2.0',
+        rssiDbm: -58,
+        detectedAt: DateTime.now(),
+      ),
+      NodeDiscoveryInfo(
+        id: 'disc-2',
+        macAddress: '00:11:22:33:44:55',
+        hardwareModel: 'ESP32 Wi-Fi Node',
+        firmwareVersion: '1.1.0',
+        rssiDbm: -72,
+        detectedAt: DateTime.now(),
+      ),
+    ];
+
+    await NodeRegistrationDialog.show(
+      context,
+      discoveredNodes: mockDiscovered,
+      onRegister: (NodeRegistrationRequestDto request) async {
+        if (!context.mounted) return true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Successfully paired hardware node ${request.displayName} (${request.macAddress}) to ${request.zoneId}!',
+            ),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        return true;
+      },
     );
   }
 

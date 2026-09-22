@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
 import '../../../core/widgets/widgets.dart';
-import '../../control/presentation/control_screen.dart';
+import '../../irrigation/presentation/manual_control_screen.dart';
 import '../domain/models/models.dart';
 
 class AlertDetailScreen extends StatelessWidget {
@@ -192,7 +192,7 @@ class AlertDetailScreen extends StatelessWidget {
 
   String _getActionLabel() {
     if (alert.category == AlertCategory.irrigation || alert.source.type == AlertSourceType.centralIrrigation) {
-      return 'Open Control Screen';
+      return 'Open Manual Control';
     }
     return 'View Field Details';
   }
@@ -200,7 +200,7 @@ class AlertDetailScreen extends StatelessWidget {
   void _handleActionNavigation(BuildContext context) {
     if (alert.category == AlertCategory.irrigation || alert.source.type == AlertSourceType.centralIrrigation) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const ControlScreen()),
+        MaterialPageRoute(builder: (context) => const ManualControlScreen()),
       );
     } else {
       Navigator.of(context).pop();

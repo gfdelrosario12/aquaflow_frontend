@@ -82,6 +82,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('User & Account'), findsOneWidget);
+      expect(find.text('Hardware Node Pairing & Discovery'), findsOneWidget);
       expect(find.text('Notification Preferences'), findsOneWidget);
       expect(find.text('Measurement Units'), findsOneWidget);
       expect(find.text('Appearance'), findsOneWidget);
@@ -94,6 +95,25 @@ void main() {
       expect(find.text('Q2 irrigation'), findsNothing);
       expect(find.text('Pump action'), findsNothing);
       expect(find.text('Valve action'), findsNothing);
+    });
+
+    testWidgets('renders node pairing section and opens node registration dialog', (tester) async {
+      final notifier = SettingsNotifier(
+        repository: LocalSettingsRepository(latency: Duration.zero),
+      );
+      addTearDown(notifier.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(home: Scaffold(body: SettingsScreen(notifier: notifier))),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Hardware Node Pairing & Discovery'), findsOneWidget);
+      await tester.ensureVisible(find.text('Discover & Pair Hardware Node'));
+      await tester.tap(find.text('Discover & Pair Hardware Node'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Register ESP32 Node'), findsOneWidget);
     });
 
     testWidgets('selects Light appearance and persists it', (tester) async {

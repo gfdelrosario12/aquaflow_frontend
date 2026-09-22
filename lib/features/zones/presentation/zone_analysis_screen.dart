@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_dimensions.dart';
-import '../../../core/widgets/aqua_button.dart';
 import '../../../core/widgets/aqua_card.dart';
 import '../../../core/widgets/aqua_chart_container.dart';
 import '../../../core/widgets/aqua_chip_selector.dart';
@@ -12,7 +11,6 @@ import '../../../core/widgets/responsive_container.dart';
 import '../../../core/widgets/sensor_metric_tile.dart';
 import '../../../core/widgets/simulated_telemetry_chart.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../control/presentation/control_screen.dart';
 import '../data/datasources/zone_data_source.dart';
 import '../data/repositories/zone_repository.dart';
 import '../domain/models/monitoring_zone.dart';
@@ -142,10 +140,6 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
             _buildHeaderCard(theme, zone),
             const SizedBox(height: AppDimensions.spaceMd),
 
-            // Read-Only AWD & Centralized Irrigation Redirection Banner
-            _buildRedirectionBanner(theme, zone),
-            const SizedBox(height: AppDimensions.spaceMd),
-
             // Trend Analysis Summary Card
             _buildTrendSummaryCard(theme, trend),
             const SizedBox(height: AppDimensions.spaceMd),
@@ -209,56 +203,6 @@ class _ZoneAnalysisScreenState extends State<ZoneAnalysisScreen> {
             ),
           ),
           StatusBadge.deviceStatus(zone.isOnline ? 'Online' : 'Offline'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRedirectionBanner(ThemeData theme, MonitoringZone zone) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.spaceMd),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.info_outline, color: AppColors.primary, size: 20),
-              const SizedBox(width: AppDimensions.spaceSm),
-              Expanded(
-                child: Text(
-                  'Read-Only Telemetry Station (${zone.code})',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.spaceSm),
-          Text(
-            'Monitoring zones serve as read-only telemetry points. Zone-level pump or valve activation controls are not available because centralized irrigation serves the entire field as a single operational unit.',
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: AppDimensions.spaceSm),
-          AquaButton(
-            label: 'Go to Centralized Controls',
-            icon: Icons.settings_remote,
-            variant: AquaButtonVariant.outline,
-            isFullWidth: false,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ControlScreen(),
-                ),
-              );
-            },
-          ),
         ],
       ),
     );

@@ -6,7 +6,7 @@ import 'package:aquaflow_frontend/features/auth/domain/models/user_session.dart'
 import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
 import 'package:aquaflow_frontend/features/control/domain/models/models.dart';
-import 'package:aquaflow_frontend/features/control/presentation/control_screen.dart';
+import 'package:aquaflow_frontend/features/irrigation/presentation/manual_control_screen.dart';
 import 'package:aquaflow_frontend/features/control/presentation/providers/central_control_provider.dart';
 
 void main() {
@@ -172,7 +172,7 @@ void main() {
     });
   });
 
-  group('ControlScreen Widget Tests', () {
+  group('ManualControlScreen Widget Tests', () {
     setUp(() {
       // Authenticate as operator to see control buttons
       final operatorToken = AuthToken(
@@ -197,54 +197,22 @@ void main() {
       globalAuthNotifier.state = AuthState.unauthenticated();
     });
 
-    testWidgets('renders ControlScreen with target badge and hardware metrics', (tester) async {
-      final repository = MockControlRepository();
-      final notifier = CentralControlNotifier(repository: repository);
-
+    testWidgets('renders ManualControlScreen with target badge and actions', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
-            body: ControlScreen(notifier: notifier),
+            body: ManualControlScreen(),
           ),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      expect(find.text('Central Field Irrigation'), findsOneWidget);
+      expect(find.text('Manual Control'), findsOneWidget);
       expect(find.text('TARGET: ENTIRE FIELD'), findsOneWidget);
-      expect(find.text('Central Controller & Actuators'), findsOneWidget);
-      expect(find.text('Start Field Irrigation'), findsOneWidget);
-      expect(find.text('Stop Field Irrigation'), findsOneWidget);
-    });
-
-    testWidgets('displays offline banner when controller is offline', (tester) async {
-      final repository = MockControlRepository();
-      repository.updateStateForTesting(CentralControlTelemetry(
-        controllerId: 'CTRL-OFFLINE',
-        controllerState: CentralControllerState.offline,
-        pumpStatus: PumpStatus.off,
-        valveStatus: MainValveStatus.closed,
-        irrigationState: IrrigationState.error,
-        flowRateLitersPerMin: 0.0,
-        linePressureBar: 0.0,
-        lastUpdated: DateTime.now(),
-      ));
-
-      final notifier = CentralControlNotifier(repository: repository);
-
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: ControlScreen(notifier: notifier),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      expect(find.text('Central Controller OFFLINE'), findsOneWidget);
-      expect(find.text('LoRaWAN messaging link unestablished. Remote control commands disabled until reconnected.'), findsOneWidget);
+      expect(find.textContaining('Emergency Resort & Manual Fallback'), findsOneWidget);
+      expect(find.text('Start Manual Pulse'), findsOneWidget);
+      expect(find.text('Stop Irrigation'), findsOneWidget);
     });
   });
 }

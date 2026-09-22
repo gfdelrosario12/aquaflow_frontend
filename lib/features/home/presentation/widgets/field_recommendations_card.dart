@@ -170,17 +170,6 @@ class FieldRecommendationsCard extends StatelessWidget {
             rec.description,
             style: theme.textTheme.bodySmall,
           ),
-          if (rec.actionType == ActionableType.startCentralIrrigation &&
-              onNavigateToControl != null) ...[
-            const SizedBox(height: AppDimensions.spaceSm),
-            AquaButton(
-              label: 'Proceed to Centralized Controls',
-              icon: Icons.play_arrow,
-              isFullWidth: false,
-              variant: AquaButtonVariant.secondary,
-              onPressed: onNavigateToControl,
-            ),
-          ],
         ],
       ),
     );

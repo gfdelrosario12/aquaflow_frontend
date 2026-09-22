@@ -152,14 +152,18 @@ class ZoneContrastSummaryCard extends StatelessWidget {
       borderColor: borderHighlight != Colors.transparent ? borderHighlight : null,
       padding: const EdgeInsets.all(AppDimensions.spaceSm),
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => ZoneAnalysisScreen(
-              zoneCode: zone.code,
-              initialZone: zone,
+        if (onNavigateToField != null) {
+          onNavigateToField!();
+        } else {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => ZoneAnalysisScreen(
+                zoneCode: zone.code,
+                initialZone: zone,
+              ),
             ),
-          ),
-        );
+          );
+        }
       },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

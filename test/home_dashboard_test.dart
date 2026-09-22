@@ -64,7 +64,7 @@ void main() {
       // Content loaded
       expect(find.text('AquaSense Dashboard'), findsOneWidget);
       expect(find.text('Overall Field Condition'), findsOneWidget);
-      expect(find.textContaining('Centralized Irrigation System'), findsWidgets);
+      expect(find.textContaining('Autonomous Edge Irrigation'), findsWidgets);
       expect(find.text('Field Recommendations'), findsOneWidget);
       expect(find.textContaining('Monitoring Zones Breakdown'), findsOneWidget);
     });
@@ -116,6 +116,31 @@ void main() {
 
       expect(find.text('Telemetry Connection Error'), findsOneWidget);
       expect(find.text('Retry Connection'), findsOneWidget);
+    });
+
+    testWidgets('tapping a monitoring zone card routes to Field tab via onNavigateToField',
+        (WidgetTester tester) async {
+      bool fieldNavigated = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeScreen(
+            onNavigateToField: () {
+              fieldNavigated = true;
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final q1Finder = find.text('Q1');
+      await tester.ensureVisible(q1Finder);
+      await tester.pumpAndSettle();
+      await tester.tap(q1Finder);
+      await tester.pumpAndSettle();
+
+      expect(fieldNavigated, isTrue);
     });
   });
 }

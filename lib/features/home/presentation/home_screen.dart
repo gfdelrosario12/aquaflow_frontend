@@ -138,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: AppDimensions.spaceLg),
             CentralIrrigationOverviewCard(
               system: summary.centralIrrigation,
-              onNavigateToControl: widget.onNavigateToControl,
             ),
             const SizedBox(height: AppDimensions.spaceLg),
             FieldRecommendationsCard(

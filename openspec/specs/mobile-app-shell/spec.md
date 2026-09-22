@@ -4,7 +4,7 @@
 Provides the primary application shell and bottom navigation router for switching between Home, Field, Analytics, Control, and Settings screens.
 ## Requirements
 ### Requirement: Application bottom navigation shell
-The application MUST display a primary navigation shell titled "Aqua Flow" providing access to Home, Field, Analytics, Control, and Settings screens with "Aqua Flow Dashboard" branding headers, guarded by user authentication state.
+The application MUST display a primary navigation shell titled "Aqua Flow" providing access to Home, Field, Manual Control, and Settings screens with "Aqua Flow Dashboard" branding headers, guarded by user authentication state.
 
 #### Scenario: Switching primary navigation tabs
 - **WHEN** an authenticated user taps a navigation item in the bottom bar

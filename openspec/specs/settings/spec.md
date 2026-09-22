@@ -1,9 +1,7 @@
 ## Purpose
 
 Provides modular AquaSense account, preference, appearance, language, application, and system settings with asynchronous persistence and a future synchronization boundary, while keeping monitoring and centralized irrigation control outside the settings feature.
-
 ## Requirements
-
 ### Requirement: Modular settings sections
 The system SHALL provide independent settings sections for user/account information, notification preferences, measurement units, appearance, language, application information, and system preferences.
 
@@ -67,3 +65,11 @@ The settings feature MUST NOT provide controls that change individual monitoring
 #### Scenario: Operator needs centralized irrigation configuration
 - **WHEN** the operator needs to change centralized irrigation behavior
 - **THEN** Settings does not mutate that configuration and directs responsibility to the field-level control/backend feature boundary.
+
+### Requirement: Hardware node pairing and discovery
+The system SHALL provide a hardware node pairing and discovery section within the Settings screen that enables operators to discover physical sensor nodes (activated via hardware button press), pair discovered nodes, and assign them to dynamic monitoring zones.
+
+#### Scenario: Discovering and pairing a physical node in Settings
+- **WHEN** an operator presses the hardware pairing button on a sensor node and taps "Discover Nodes" in the Settings screen
+- **THEN** the system scans for discoverable nodes, lists detected devices with hardware identifiers, and allows the operator to pair and assign the node to a dynamic monitoring zone.
+

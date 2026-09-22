@@ -5,13 +5,18 @@ import '../../../core/constants/app_dimensions.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/widgets/widgets.dart';
 import '../../control/domain/models/control_enums.dart';
+import '../../irrigation/data/repositories/irrigation_repository.dart';
+import '../../irrigation/domain/models/centralized_irrigation.dart';
 import '../../nodes/data/repositories/node_repository.dart';
 import '../../nodes/domain/models/models.dart';
+import '../../nodes/presentation/widgets/node_registration_dialog.dart';
 import '../../nodes/presentation/widgets/spatial_field_canvas_visualizer.dart';
+
 import '../../nodes/presentation/widgets/transmission_interval_dialog.dart';
 import '../../zones/data/datasources/zone_data_source.dart';
 import '../../zones/data/repositories/zone_repository.dart';
 import '../../zones/domain/models/monitoring_zone.dart';
+import 'widgets/dynamic_zone_grid_visualizer.dart';
 import 'widgets/field_header_overview_card.dart';
 import 'widgets/dynamic_zone_grid_visualizer.dart';
 import 'widgets/zone_detail_bottom_sheet.dart';
@@ -22,6 +27,7 @@ class FieldScreen extends StatefulWidget {
   final VoidCallback? onNavigateToControl;
   final ZoneRepository? repository;
   final NodeRepository? nodeRepository;
+  final IrrigationRepository? irrigationRepository;
   final ControlUserRole userRole;
 
   const FieldScreen({
@@ -29,6 +35,7 @@ class FieldScreen extends StatefulWidget {
     this.onNavigateToControl,
     this.repository,
     this.nodeRepository,
+    this.irrigationRepository,
     this.userRole = ControlUserRole.operator,
   });
 
@@ -39,11 +46,13 @@ class FieldScreen extends StatefulWidget {
 class _FieldScreenState extends State<FieldScreen> {
   late final ZoneRepository _zoneRepository;
   late final NodeRepository _nodeRepository;
+  late final IrrigationRepository _irrigationRepository;
 
   bool _isLoading = true;
   String? _errorMessage;
   List<MonitoringZone> _zones = [];
   List<Esp32Node> _nodes = [];
+  CentralizedIrrigation? _centralIrrigation;
   ZoneMockState _currentMockState = ZoneMockState.normal;
   FieldVisualizationMode _visMode = FieldVisualizationMode.matrix;
   String? _selectedZoneCode;
@@ -53,6 +62,7 @@ class _FieldScreenState extends State<FieldScreen> {
     super.initState();
     _zoneRepository = widget.repository ?? ZoneRepositoryImpl();
     _nodeRepository = widget.nodeRepository ?? MockNodeRepository();
+    _irrigationRepository = widget.irrigationRepository ?? IrrigationRepositoryImpl();
     _loadZones();
   }
 
@@ -69,10 +79,12 @@ class _FieldScreenState extends State<FieldScreen> {
         mockState: stateToFetch,
       );
       final nodes = await _nodeRepository.fetchNodes();
+      final sys = await _irrigationRepository.fetchSystemStatus();
       if (mounted) {
         setState(() {
           _zones = zones;
           _nodes = nodes;
+          _centralIrrigation = sys;
           _isLoading = false;
         });
       }
@@ -101,7 +113,6 @@ class _FieldScreenState extends State<FieldScreen> {
       zone: zone,
       assignedNodes: assignedNodes,
       userRole: widget.userRole,
-      onNavigateToControl: widget.onNavigateToControl,
       onConfigureInterval: (node) => _configureNodeInterval(node),
     );
   }
@@ -124,6 +135,23 @@ class _FieldScreenState extends State<FieldScreen> {
         return true;
       },
     );
+  }
+
+  Future<void> _openNodeScanner() async {
+    final discovered = await _nodeRepository.fetchDiscoveredNodes();
+    if (!mounted) return;
+    final registered = await NodeRegistrationDialog.show(
+      context,
+      discoveredNodes: discovered,
+      onRegister: (request) async {
+        await _nodeRepository.registerNode(request);
+        await _loadZones();
+        return true;
+      },
+    );
+    if (registered == true) {
+      await _loadZones();
+    }
   }
 
   @override
@@ -220,6 +248,8 @@ class _FieldScreenState extends State<FieldScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: AppDimensions.spaceMd),
+            _buildCentralActuatorsCard(_centralIrrigation),
             const SizedBox(height: AppDimensions.spaceMd),
             FieldHeaderOverviewCard(
               zones: _zones,
@@ -363,6 +393,11 @@ class _FieldScreenState extends State<FieldScreen> {
           ],
         ),
         IconButton(
+          onPressed: _openNodeScanner,
+          icon: const Icon(Icons.qr_code_scanner, color: AppColors.primary),
+          tooltip: 'Scan & Register Dynamic Node',
+        ),
+        IconButton(
           onPressed: () => _loadZones(),
           icon: const Icon(Icons.sync, color: AppColors.primary),
           tooltip: 'Sync Field Data',
@@ -493,6 +528,83 @@ class _FieldScreenState extends State<FieldScreen> {
                   color: zone.batteryPercent < 20
                       ? AppColors.error
                       : AppColors.deviceBatteryGood,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCentralActuatorsCard(CentralizedIrrigation? sys) {
+    if (sys == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+
+    final pumpText = sys.mainPumpState == PumpState.active
+        ? 'PUMPING'
+        : (sys.mainPumpState == PumpState.warning
+            ? 'WARNING'
+            : (sys.mainPumpState == PumpState.offline ? 'OFFLINE' : 'OFF'));
+    final valveText = sys.distributionValveState == ValveState.open
+        ? 'OPEN'
+        : (sys.distributionValveState == ValveState.partial ? 'PARTIAL' : 'CLOSED');
+    final ctrlText = sys.mainPumpState == PumpState.offline ? 'OFFLINE' : 'ONLINE';
+
+    return AquaCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.settings_remote_outlined, color: AppColors.primary, size: 20),
+                    const SizedBox(width: AppDimensions.spaceSm),
+                    Expanded(
+                      child: Text(
+                        'Central Field Hardware Status',
+                        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppDimensions.spaceSm),
+              StatusBadge.deviceStatus(ctrlText, compact: true),
+            ],
+          ),
+          const SizedBox(height: AppDimensions.spaceSm),
+          const Divider(),
+          const SizedBox(height: AppDimensions.spaceSm),
+          Row(
+            children: [
+              Expanded(
+                child: SensorMetricTile(
+                  label: 'Main Pump',
+                  value: pumpText,
+                  icon: Icons.power_settings_new,
+                  color: sys.mainPumpState == PumpState.active ? AppColors.pumpActive : AppColors.primary,
+                ),
+              ),
+              Expanded(
+                child: SensorMetricTile(
+                  label: 'Main Valve',
+                  value: valveText,
+                  icon: Icons.alt_route,
+                  color: sys.distributionValveState == ValveState.open ? AppColors.valveOpen : AppColors.primary,
+                ),
+              ),
+              Expanded(
+                child: SensorMetricTile(
+                  label: 'Flow Rate',
+                  value: sys.flowRateLitersPerMin.toStringAsFixed(1),
+                  unit: 'L/min',
+                  icon: Icons.speed,
+                  color: AppColors.primary,
                 ),
               ),
             ],

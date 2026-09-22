@@ -4,9 +4,7 @@ import 'package:aquaflow_frontend/features/auth/domain/models/auth_token.dart';
 import 'package:aquaflow_frontend/features/auth/domain/models/user_role.dart';
 import 'package:aquaflow_frontend/features/auth/domain/models/user_session.dart';
 import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
-import 'package:aquaflow_frontend/features/control/presentation/control_screen.dart';
-import 'package:aquaflow_frontend/features/control/presentation/providers/central_control_provider.dart';
+import 'package:aquaflow_frontend/features/irrigation/presentation/manual_control_screen.dart';
 import 'package:aquaflow_frontend/features/irrigation/data/datasources/irrigation_data_source.dart';
 import 'package:aquaflow_frontend/features/irrigation/data/repositories/irrigation_repository.dart';
 import 'package:aquaflow_frontend/features/irrigation/domain/models/auto_irrigation_config.dart';
@@ -57,10 +55,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ControlScreen(
-              notifier: CentralControlNotifier(
-                repository: MockControlRepository(),
-              ),
+            body: ManualControlScreen(
               irrigationNotifier: irrigationNotifier,
             ),
           ),
@@ -87,10 +82,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ControlScreen(
-              notifier: CentralControlNotifier(
-                repository: MockControlRepository(),
-              ),
+            body: ManualControlScreen(
               irrigationNotifier: irrigationNotifier,
             ),
           ),
@@ -131,10 +123,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ControlScreen(
-              notifier: CentralControlNotifier(
-                repository: MockControlRepository(),
-              ),
+            body: ManualControlScreen(
               irrigationNotifier: irrigationNotifier,
             ),
           ),
@@ -183,10 +172,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ControlScreen(
-              notifier: CentralControlNotifier(
-                repository: MockControlRepository(),
-              ),
+            body: ManualControlScreen(
               irrigationNotifier: irrigationNotifier,
             ),
           ),
@@ -202,6 +188,12 @@ void main() {
 
     testWidgets('shows fault lockout banner and clear lockout action',
         (tester) async {
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(const SizedBox()); // Apply view size
+
       final fake = _FakeIrrigationRepository(
         config: const AutoIrrigationConfig(isEnabled: true),
         status: AutoIrrigationStatus(
@@ -221,10 +213,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ControlScreen(
-              notifier: CentralControlNotifier(
-                repository: MockControlRepository(),
-              ),
+            body: ManualControlScreen(
               irrigationNotifier: irrigationNotifier,
             ),
           ),
@@ -233,7 +222,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('FAULT LOCKED'), findsOneWidget);
-      expect(find.text('Automation Fault Locked'), findsOneWidget);
+      expect(find.textContaining('Lockout:'), findsOneWidget);
       expect(find.text('Clear Lockout'), findsWidgets);
     });
   });

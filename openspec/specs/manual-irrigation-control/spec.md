@@ -4,11 +4,11 @@
 Provides a dedicated, secure, and isolated Manual Control interface for field-wide AquaSense irrigation, separate from automatic sensor-driven execution.
 ## Requirements
 ### Requirement: Dedicated Manual Control Interface
-The application SHALL provide a dedicated Manual Control tab and screen separated from automatic AWD supervision and field monitoring interfaces.
+The application SHALL provide a consolidated Manual Control tab and screen serving as the primary control center for central field irrigation dispatch, combining manual overrides, automatic supervision state, lockout resolution, and execution audit logging in one interface.
 
 #### Scenario: Navigating to manual control interface
 - **WHEN** an authorized user accesses the Manual Control section of the application
-- **THEN** the system displays the manual irrigation controls, active field pump/valve status, manual duration selectors, and confirmation controls clearly separated from automatic AWD analysis.
+- **THEN** the system displays the manual irrigation controls, automation supervisor status, field command actions, active field pump/valve status, manual duration selectors, emergency stop interlock, and irrigation execution audit log.
 
 ### Requirement: Strict Field-Wide Actuation Target
 All manual irrigation start, stop, duration adjustment, and manual override commands SHALL target the centralized irrigation system of the field (`ENTIRE FIELD`). Manual commands SHALL NOT target or accept individual monitoring zones or quadrants.

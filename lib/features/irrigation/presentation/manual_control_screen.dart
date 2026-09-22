@@ -3,7 +3,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../auth/domain/models/user_role.dart';
+import '../../control/presentation/widgets/auto_irrigation_config_dialog.dart';
 import '../../control/presentation/widgets/irrigation_audit_log_section.dart';
+import '../domain/models/auto_irrigation_config.dart';
+import '../domain/models/auto_irrigation_status.dart';
 import '../domain/models/manual_irrigation_control.dart';
 import 'providers/irrigation_notifier.dart';
 import 'providers/manual_control_notifier.dart';
@@ -144,6 +147,45 @@ class _ManualControlScreenState extends State<ManualControlScreen> {
     }
   }
 
+  Future<void> _handleConfigureAutomation() async {
+    final updated = await AutoIrrigationConfigDialog.show(
+      context,
+      _irrigationNotifier.state.config,
+    );
+    if (updated != null) {
+      final ok = await _irrigationNotifier.updateConfig(updated);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ok
+                ? 'Automation configuration updated.'
+                : 'Failed to update configuration.'),
+            backgroundColor: ok ? AppColors.primary : AppColors.alertError,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleClearLockout() async {
+    final ok = await _irrigationNotifier.clearFaultLockout(
+      clearedBy: widget.userRole.name,
+      resolutionNote: 'Cleared by operator via Manual Control Screen',
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(ok
+              ? 'Fault lockout successfully cleared. Automation restored to standby.'
+              : 'Failed to clear fault lockout.'),
+          backgroundColor: ok ? AppColors.pumpActive : AppColors.alertError,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -170,7 +212,7 @@ class _ManualControlScreenState extends State<ManualControlScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Dedicated manual override interface for central field irrigation',
+                        'Dedicated manual override & central field control interface',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -200,6 +242,8 @@ class _ManualControlScreenState extends State<ManualControlScreen> {
                 ),
               ],
             ),
+            // Emergency Fallback & Override Notice Banner
+            _buildEmergencyFallbackBanner(theme),
             const SizedBox(height: AppDimensions.spaceMd),
 
             // Emergency Stop Interlock Button
@@ -207,6 +251,10 @@ class _ManualControlScreenState extends State<ManualControlScreen> {
               onPressed: _handleEmergencyStop,
               isLoading: manualState.isLoading && manualState.isEmergencyStopped,
             ),
+            const SizedBox(height: AppDimensions.spaceMd),
+
+            // Automation Supervisor Card
+            _buildAutoSupervisorCard(),
             const SizedBox(height: AppDimensions.spaceMd),
 
             // Role Authorization Warning
@@ -404,6 +452,196 @@ class _ManualControlScreenState extends State<ManualControlScreen> {
               style: const TextStyle(color: AppColors.alertError, fontSize: 12),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutoSupervisorCard() {
+    final theme = Theme.of(context);
+    final autoState = _irrigationNotifier.state;
+    final status = autoState.status;
+    final config = autoState.config;
+
+    Color badgeColor;
+    IconData badgeIcon;
+    switch (status.state) {
+      case AutoIrrigationState.disabled:
+        badgeColor = theme.hintColor;
+        badgeIcon = Icons.power_settings_new;
+        break;
+      case AutoIrrigationState.standby:
+        badgeColor = AppColors.primary;
+        badgeIcon = Icons.check_circle_outline;
+        break;
+      case AutoIrrigationState.evaluating:
+        badgeColor = Colors.orange.shade700;
+        badgeIcon = Icons.sync;
+        break;
+      case AutoIrrigationState.pendingAck:
+        badgeColor = Colors.amber.shade800;
+        badgeIcon = Icons.hourglass_top;
+        break;
+      case AutoIrrigationState.irrigating:
+        badgeColor = Colors.purple.shade600;
+        badgeIcon = Icons.smart_toy;
+        break;
+      case AutoIrrigationState.cooldown:
+        badgeColor = Colors.teal.shade700;
+        badgeIcon = Icons.timelapse;
+        break;
+      case AutoIrrigationState.faultLocked:
+        badgeColor = AppColors.alertError;
+        badgeIcon = Icons.lock;
+        break;
+    }
+
+    final remainingCooldown = status.remainingCooldown();
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
+        side: BorderSide(color: badgeColor.withValues(alpha: 0.3)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppDimensions.spaceMd),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      Icon(badgeIcon, color: badgeColor, size: 22),
+                      const SizedBox(width: AppDimensions.spaceSm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Automation Supervisor',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Centralized field-level autonomous control',
+                              style: theme.textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: AppDimensions.spaceSm),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+                    border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
+                  ),
+                  child: Text(
+                    status.state.label.toUpperCase(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: badgeColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppDimensions.spaceSm),
+            const Divider(),
+            const SizedBox(height: AppDimensions.spaceSm),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppDimensions.spaceSm,
+              runSpacing: AppDimensions.spaceSm,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (status.isInCooldown && remainingCooldown != null)
+                      Text(
+                        'Cooldown Active: ${remainingCooldown.inMinutes}m ${remainingCooldown.inSeconds % 60}s remaining',
+                        style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    if (status.isFaultLocked)
+                      Text(
+                        'Lockout: ${status.lockoutReason ?? "Hardware fault"}',
+                        style: const TextStyle(color: AppColors.alertError, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    Text(
+                      config.isEnabled
+                          ? 'Window: ${config.allowedHoursStart.toString().padLeft(2, "0")}:00 - ${config.allowedHoursEnd.toString().padLeft(2, "0")}:00'
+                          : 'Field automation is currently disabled.',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: AppDimensions.spaceSm,
+                  runSpacing: AppDimensions.spaceSm,
+                  children: [
+                    if (status.isFaultLocked) ...[
+                      AuthorizationGate(
+                        requiredRole: UserRole.operator,
+                        child: FilledButton.tonalIcon(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.alertError.withValues(alpha: 0.15),
+                            foregroundColor: AppColors.alertError,
+                          ),
+                          icon: const Icon(Icons.lock_open, size: 16),
+                          label: const Text('Clear Lockout'),
+                          onPressed: _handleClearLockout,
+                        ),
+                      ),
+                    ],
+                    AuthorizationGate(
+                      requiredRole: UserRole.operator,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.tune, size: 16),
+                        label: const Text('Configure'),
+                        onPressed: _handleConfigureAutomation,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmergencyFallbackBanner(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(AppDimensions.spaceSm),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+          const SizedBox(width: AppDimensions.spaceSm),
+          Expanded(
+            child: Text(
+              'Emergency Resort & Manual Fallback — Primary irrigation is managed autonomously by edge nodes based on water level thresholds. Use centralized controls for emergency intervention or system override.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
         ],
       ),
     );

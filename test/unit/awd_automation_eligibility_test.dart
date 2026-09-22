@@ -47,7 +47,7 @@ void main() {
       expect(eligibility.inhibitionReasons, isEmpty);
       expect(eligibility.recommendedDurationMinutes, greaterThanOrEqualTo(15));
       expect(eligibility.recommendedDurationMinutes, lessThanOrEqualTo(45));
-      expect(eligibility.summaryRationale, contains('automated reflood'));
+      expect(eligibility.summaryRationale, contains('edge node autonomous reflood'));
     });
 
     test('inhibits automated irrigation due to high zone disparity', () {

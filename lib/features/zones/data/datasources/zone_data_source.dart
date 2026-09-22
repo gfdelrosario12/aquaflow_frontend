@@ -15,6 +15,14 @@ abstract class ZoneDataSource {
 }
 
 class MockZoneDataSource implements ZoneDataSource {
+  static final List<MonitoringZone> _customZones = [];
+
+  static void addCustomZone(MonitoringZone zone) {
+    if (!_customZones.any((z) => z.id == zone.id || z.code == zone.code)) {
+      _customZones.add(zone);
+    }
+  }
+
   List<MonitoringZone> _getMockZones(DateTime now, {bool isStale = false}) {
     final updatedTime = isStale
         ? now.subtract(const Duration(hours: 3))
@@ -193,7 +201,8 @@ class MockZoneDataSource implements ZoneDataSource {
     }
 
     final now = DateTime.now();
-    return _getMockZones(now, isStale: mockState == ZoneMockState.stale);
+    final defaultZones = _getMockZones(now, isStale: mockState == ZoneMockState.stale);
+    return [...defaultZones, ..._customZones];
   }
 
   @override

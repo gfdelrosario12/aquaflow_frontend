@@ -11,7 +11,7 @@ void main() {
     final event = RealtimeEvent.fromJson(_eventJson(
       eventId: 'evt-1',
       eventType: 'water_measurement',
-      scope: 'Q2',
+      scope: 'NODE-esp32-01',
       sequence: 4,
     ));
 
@@ -31,7 +31,7 @@ void main() {
     );
     expect(
       () => RealtimeEvent.fromJson(
-        _eventJson(eventType: 'irrigation_state', scope: 'Q1'),
+        _eventJson(eventType: 'irrigation_state', scope: 'NODE-esp32-01'),
       ),
       throwsA(isA<RealtimeValidationException>()),
     );
@@ -65,7 +65,7 @@ void main() {
     expect(coordinator.state.connection, RealtimeConnectionState.connected);
     expect(transport.subscriptions, hasLength(1));
     expect(received.map((event) => event.eventId), ['evt-1', 'evt-2']);
-    expect(coordinator.latestEvents['Q1']?.eventId, 'evt-2');
+    expect(coordinator.latestEvents['NODE-esp32-01']?.eventId, 'evt-2');
   });
 
   test('invalid event enters degraded fallback state and retains valid cache', () async {
@@ -88,10 +88,10 @@ void main() {
 
     await coordinator.start();
     transport.emit(_encode(_eventJson(eventId: 'evt-valid', sequence: 1)));
-    transport.emit(_encode(_eventJson(eventId: 'evt-invalid', scope: 'Q9')));
+    transport.emit(_encode(_eventJson(eventId: 'evt-invalid', scope: '9Q')));
     await Future<void>.delayed(const Duration(milliseconds: 5));
 
-    expect(coordinator.latestEvents['Q1']?.eventId, 'evt-valid');
+    expect(coordinator.latestEvents['NODE-esp32-01']?.eventId, 'evt-valid');
     expect(coordinator.state.isDegraded, isTrue);
     expect(polls, greaterThanOrEqualTo(0));
   });
@@ -122,7 +122,7 @@ Map<String, dynamic> _eventJson({
   int version = 1,
   String eventId = 'evt-default',
   String eventType = 'measurement',
-  String scope = 'Q1',
+  String scope = 'NODE-esp32-01',
   int sequence = 1,
 }) {
   return {

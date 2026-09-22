@@ -11,7 +11,6 @@ import '../../../core/widgets/responsive_container.dart';
 import '../../../core/widgets/sensor_metric_tile.dart';
 import '../../../core/widgets/simulated_telemetry_chart.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../../control/presentation/control_screen.dart';
 import '../data/repositories/awd_repository.dart';
 import '../domain/models/awd_analytics_summary.dart';
 import '../domain/models/awd_automation_eligibility.dart';
@@ -222,12 +221,8 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
           _buildFieldOverviewCard(theme, summary),
           const SizedBox(height: AppDimensions.spaceMd),
 
-          // Single Centralized Decision & Recommendation Card
+          // Node Autonomous Decision Card
           _buildRecommendationCard(theme, summary),
-          const SizedBox(height: AppDimensions.spaceMd),
-
-          // Read-Only Centralized Control Redirection Banner
-          _buildRedirectionBanner(theme),
           const SizedBox(height: AppDimensions.spaceMd),
 
           // Configurable AWD Threshold Rules Inspector
@@ -660,7 +655,7 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
                     const SizedBox(width: AppDimensions.spaceSm),
                     Expanded(
                       child: Text(
-                        'Centralized Field Decision',
+                        'Node Autonomous Decision',
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -710,55 +705,6 @@ class _AwdAnalyticsScreenState extends State<AwdAnalyticsScreen> {
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: AppDimensions.spaceSm),
-          AquaButton(
-            label: 'Go to Centralized Controls',
-            icon: Icons.settings_remote,
-            isFullWidth: true,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => const ControlScreen(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRedirectionBanner(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(AppDimensions.spaceSm),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.shield_outlined, color: AppColors.primary, size: 18),
-              const SizedBox(width: AppDimensions.spaceSm),
-              Expanded(
-                child: Text(
-                  'Unified Field Irrigation Scope',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'AquaSense evaluates field monitoring telemetry as a single unified field unit. Zone-level pump or valve triggers do not exist; all watering decisions control the centralized field irrigation pump.',
-            style: theme.textTheme.bodySmall,
           ),
         ],
       ),

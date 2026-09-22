@@ -4,9 +4,7 @@ import 'package:aquaflow_frontend/features/auth/domain/models/auth_token.dart';
 import 'package:aquaflow_frontend/features/auth/domain/models/user_role.dart';
 import 'package:aquaflow_frontend/features/auth/domain/models/user_session.dart';
 import 'package:aquaflow_frontend/features/auth/presentation/controllers/auth_controller.dart';
-import 'package:aquaflow_frontend/features/control/data/repositories/control_repository.dart';
-import 'package:aquaflow_frontend/features/control/presentation/control_screen.dart';
-import 'package:aquaflow_frontend/features/control/presentation/providers/central_control_provider.dart';
+import 'package:aquaflow_frontend/features/irrigation/presentation/manual_control_screen.dart';
 import 'package:aquaflow_frontend/features/field/presentation/field_screen.dart';
 import 'package:aquaflow_frontend/features/home/data/repositories/field_dashboard_repository.dart';
 import 'package:aquaflow_frontend/features/home/presentation/home_screen.dart';
@@ -41,11 +39,6 @@ void main() {
       globalAuthNotifier.state = AuthState.unauthenticated();
     });
 
-    tearDown(() {
-      // Reset auth state without calling secure storage
-      globalAuthNotifier.state = AuthState.unauthenticated();
-    });
-
     for (final width in [
       360.0,
       400.0,
@@ -70,23 +63,18 @@ void main() {
         expect(find.byType(HomeScreen), findsOneWidget);
       });
 
-      testWidgets('ControlScreen at ${width.toInt()}px keeps Start action',
+      testWidgets('ManualControlScreen at ${width.toInt()}px keeps Start action',
           (tester) async {
         await setPhoneWidth(tester, width);
-        final notifier = CentralControlNotifier(
-          repository: MockControlRepository(),
-        );
-        addTearDown(notifier.dispose);
-
         await tester.pumpWidget(
-          MaterialApp(
-            home: Scaffold(body: ControlScreen(notifier: notifier)),
+          const MaterialApp(
+            home: Scaffold(body: ManualControlScreen()),
           ),
         );
         await tester.pumpAndSettle();
 
         expect(tester.takeException(), isNull);
-        expect(find.text('Start Field Irrigation'), findsOneWidget);
+        expect(find.text('Start Manual Pulse'), findsOneWidget);
         expect(find.textContaining('ENTIRE FIELD'), findsWidgets);
       });
 

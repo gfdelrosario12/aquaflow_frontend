@@ -1,6 +1,9 @@
 import 'dart:async';
 import '../../../../core/api/api_dtos.dart';
+import '../../../zones/data/datasources/zone_data_source.dart';
+import '../../../zones/domain/models/monitoring_zone.dart';
 import '../../domain/models/models.dart';
+
 
 abstract class NodeRepository {
   /// Fetch all registered nodes, optionally filtered by field, zone, or point
@@ -289,6 +292,41 @@ class MockNodeRepository implements NodeRepository {
     );
     _nodes.add(newNode);
     _discovered.removeWhere((d) => d.macAddress == request.macAddress);
+
+    if (request.zoneId != null &&
+        !const {'zone-q1', 'zone-q2', 'zone-q3', 'zone-q4'}.contains(request.zoneId)) {
+      final code = request.zoneId!.replaceAll('zone-', '').toUpperCase();
+      MockZoneDataSource.addCustomZone(
+        MonitoringZone(
+          id: request.zoneId!,
+          code: code.length > 5 ? code.substring(0, 5) : code,
+          name: '${request.displayName} Zone',
+          soilMoisturePercent: 45.0,
+          waterLevelCm: 4.0,
+          temperatureCelsius: 28.0,
+          humidityPercent: 70.0,
+          batteryPercent: 100,
+          status: ZoneStatus.optimal,
+          lastUpdated: DateTime.now(),
+          isOnline: true,
+          rssiDbm: -70,
+          snrDb: 10.0,
+          assignedNodeIds: [id],
+          coordinates: SpatialCoordinates(
+            latitude: request.latitude,
+            longitude: request.longitude,
+            localX: request.localX,
+            localY: request.localY,
+          ),
+          transmissionConfig: TransmissionConfig(
+            intervalSeconds: request.transmissionIntervalSeconds,
+            isAdaptive: false,
+            lastConfiguredAt: DateTime.now(),
+          ),
+        ),
+      );
+    }
+
     _controller.add(List.unmodifiable(_nodes));
     return newNode;
   }

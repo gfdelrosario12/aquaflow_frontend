@@ -5,7 +5,7 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/widgets/widgets.dart';
 import '../../../../features/auth/domain/models/user_role.dart';
 import '../../../control/domain/models/control_enums.dart';
-import '../../../control/presentation/control_screen.dart';
+import '../../../irrigation/presentation/manual_control_screen.dart';
 import '../../../nodes/domain/models/models.dart';
 import '../../../nodes/presentation/widgets/node_replacement_dialog.dart';
 import '../../../nodes/presentation/widgets/transmission_interval_dialog.dart';
@@ -422,13 +422,13 @@ class DeviceDetailDialog extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).pop();
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ControlScreen()),
+                MaterialPageRoute(builder: (context) => const ManualControlScreen()),
               );
             },
             style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white),
-            child: const Text('Open Control Screen'),
+            child: const Text('Open Manual Control'),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),

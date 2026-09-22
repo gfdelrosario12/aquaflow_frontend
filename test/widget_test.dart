@@ -28,10 +28,11 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
 
     expect(find.text('AquaSense Dashboard'), findsOneWidget);
-    expect(find.text('Centralized Irrigation System'), findsOneWidget);
+    expect(find.text('Autonomous Edge Irrigation'), findsOneWidget);
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Field'), findsWidgets);
-    expect(find.text('Control'), findsWidgets);
+    expect(find.text('Manual'), findsWidgets);
+    expect(find.text('Settings'), findsWidgets);
   });
 
   test('MonitoringZone repository retrieves Q1–Q4 zones', () async {

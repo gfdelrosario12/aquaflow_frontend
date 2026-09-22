@@ -33,16 +33,6 @@ class FieldTopology {
     }
     return null;
   }
-
-  /// Converts the field topology into legacy MonitoringZone objects
-  /// for backward compatibility with prototype UI widgets.
-  List<MonitoringZone> toLegacyZones() {
-    if (zones.isNotEmpty) return zones;
-    return points.map((pt) {
-      final node = findNodeForPoint(pt.id);
-      return MonitoringZone.fromPointAndNode(point: pt, node: node);
-    }).toList();
-  }
 }
 
 /// Abstract contract for retrieving and managing field topology.

@@ -88,12 +88,10 @@ void main() {
 
       expect(find.text('AquaSense AWD Analytics'), findsOneWidget);
       expect(find.text('Field-Wide AWD Condition'), findsOneWidget);
-      expect(find.text('Centralized Field Decision'), findsOneWidget);
-      expect(find.text('Unified Field Irrigation Scope'), findsOneWidget);
+      expect(find.text('Node Autonomous Decision'), findsOneWidget);
       expect(find.text('Configurable AWD Threshold Rules'), findsOneWidget);
       expect(
           find.text('Quad-Zone Drying & Wetting Rate Comparison'), findsOneWidget);
-      expect(find.text('Go to Centralized Controls'), findsOneWidget);
 
       // Verify read-only guardrails: zone-level pump triggers are omitted
       expect(find.text('Start Irrigation (Q1)'), findsNothing);

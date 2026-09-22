@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../alerts/presentation/alerts_screen.dart';
-import '../../analytics/presentation/analytics_screen.dart';
-import '../../control/presentation/control_screen.dart';
 import '../../diagnostics/presentation/device_diagnostics_screen.dart';
 import '../../field/presentation/field_screen.dart';
 import '../../home/presentation/home_screen.dart';
@@ -31,12 +29,8 @@ class _AppShellState extends State<AppShell> {
       case 1:
         return AppStrings.navField;
       case 2:
-        return AppStrings.navAnalytics;
-      case 3:
-        return AppStrings.navControl;
-      case 4:
         return AppStrings.navManualControl;
-      case 5:
+      case 3:
         return AppStrings.navSettings;
       default:
         return AppStrings.appTitle;
@@ -47,12 +41,10 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       HomeScreen(
-        onNavigateToControl: () => _onTabSelected(3),
+        onNavigateToControl: () => _onTabSelected(2),
         onNavigateToField: () => _onTabSelected(1),
       ),
       const FieldScreen(),
-      const AnalyticsScreen(),
-      const ControlScreen(),
       const ManualControlScreen(),
       const SettingsScreen(),
     ];
@@ -110,16 +102,6 @@ class _AppShellState extends State<AppShell> {
               icon: Icon(Icons.grid_view_outlined),
               activeIcon: Icon(Icons.grid_view),
               label: AppStrings.navField,
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined),
-              activeIcon: Icon(Icons.analytics),
-              label: AppStrings.navAnalytics,
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_remote_outlined),
-              activeIcon: Icon(Icons.settings_remote),
-              label: AppStrings.navControl,
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.touch_app_outlined),
